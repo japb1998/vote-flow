@@ -1,0 +1,82 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.bar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.bar.winner .name {
+  color: var(--color-success);
+  font-weight: 600;
+}
+
+.label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.name {
+  font-weight: 500;
+  font-size: 0.9375rem;
+}
+
+.winnerBadge {
+  font-size: 0.6875rem;
+  padding: 2px 6px;
+  background-color: var(--color-success);
+  color: white;
+  border-radius: var(--radius-sm);
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.barContainer {
+  height: 8px;
+  background-color: var(--color-bg-hover);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.barFill {
+  height: 100%;
+  border-radius: var(--radius-sm);
+  transition: width 300ms ease-out;
+}
+
+.stats {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.count {
+  font-weight: 500;
+}
+
+.percentage {
+  font-family: var(--font-mono);
+}
+
+.roundInfo {
+  margin-top: var(--space-md);
+  padding: var(--space-md);
+  background-color: var(--color-bg-hover);
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+}
+
+.roundInfo h4 {
+  margin-bottom: var(--space-xs);
+  color: var(--color-ranked);
+}
+
+.roundInfo p {
+  color: var(--color-text-muted);
+}

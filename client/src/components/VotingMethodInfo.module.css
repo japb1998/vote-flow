@@ -1,0 +1,103 @@
+.container {
+  margin-top: var(--space-md);
+}
+
+.toggleBtn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: var(--space-sm) var(--space-md);
+  background-color: var(--color-bg-hover);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.toggleBtn:hover {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+}
+
+.toggleIcon {
+  font-size: 0.75rem;
+}
+
+.infoCard {
+  margin-top: var(--space-sm);
+  padding: var(--space-md);
+}
+
+.infoTitle {
+  font-size: 1rem;
+  margin-bottom: var(--space-xs);
+  color: var(--color-primary);
+}
+
+.infoDesc {
+  font-size: 0.875rem;
+  color: var(--color-text);
+  margin-bottom: var(--space-sm);
+}
+
+.infoExample {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+.fullContainer {
+  margin-top: var(--space-xl);
+  padding-top: var(--space-lg);
+  border-top: 1px solid var(--color-border);
+}
+
+.sectionTitle {
+  font-size: 1.125rem;
+  margin-bottom: var(--space-md);
+  color: var(--color-text);
+}
+
+.methodItem {
+  margin-bottom: var(--space-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.methodHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: var(--space-md);
+  background-color: var(--color-bg-elevated);
+  border: none;
+  color: var(--color-text);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 150ms ease;
+}
+
+.methodHeader:hover {
+  background-color: var(--color-bg-hover);
+}
+
+.methodContent {
+  padding: var(--space-md);
+  background-color: var(--color-bg);
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  line-height: 1.6;
+}
+
+.methodContent p {
+  margin-bottom: var(--space-sm);
+}
+
+.methodContent p:last-child {
+  margin-bottom: 0;
+}
