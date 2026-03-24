@@ -32,3 +32,6 @@ out/
 # Database
 data/
 *.sqlite
+
+# PRDs and internal strategy docs
+prds/

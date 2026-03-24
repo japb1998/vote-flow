@@ -2,6 +2,9 @@
 
 Real-time collaborative voting application with multiple voting mechanisms.
 
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Support%20VoteFlow-FFDD00?style=flat&logo=buy-me-a-coffee&logoColor=black)](https://www.buymeacoffee.com/voteflow)
+[![GitHub Sponsors](https://img.shields.io/badge/GitHub%20Sponsors-Sponsor%20VoteFlow-EA4AAA?style=flat&logo=github-sponsors)](https://github.com/sponsors/voteflow)
+
 ## Features
 
 - **Real-time voting** - Votes update instantly across all connected clients
@@ -116,6 +119,15 @@ Rate each option from 1-5 stars. The option with the highest total score wins.
 - **tsx** - TypeScript execution for dev
 - **concurrently** - Run client and server in parallel
 - **tsc** - TypeScript compiler
+
+## Support the Project
+
+VoteFlow is free and open-source. If it's useful to you, consider supporting ongoing development:
+
+- ☕ **[Buy Me a Coffee](https://www.buymeacoffee.com/voteflow)** — one-time tip to keep the project going
+- **[GitHub Sponsors](https://github.com/sponsors/voteflow)** — recurring support with sponsor perks (logo in README, priority feature requests, and more)
+
+Every contribution helps maintain the project and fund new features. Thank you!
 
 ## License
 
