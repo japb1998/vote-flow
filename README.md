@@ -1,5 +1,7 @@
 # VoteFlow
 
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-japb-FFDD00?style=flat&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/japb)
+
 Real-time collaborative voting application with multiple voting mechanisms.
 
 ## Features
@@ -116,6 +118,13 @@ Rate each option from 1-5 stars. The option with the highest total score wins.
 - **tsx** - TypeScript execution for dev
 - **concurrently** - Run client and server in parallel
 - **tsc** - TypeScript compiler
+
+## Support the Project
+
+If you find VoteFlow useful, consider supporting its development:
+
+- **Buy Me a Coffee**: [buymeacoffee.com/japb](https://buymeacoffee.com/japb)
+- **GitHub Sponsors**: [github.com/sponsors/japb1998](https://github.com/sponsors/japb1998)
 
 ## License
 
