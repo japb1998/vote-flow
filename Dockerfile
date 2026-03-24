@@ -3,9 +3,9 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 # Install dependencies
-COPY package.json package-lock.json ./
-COPY client/package.json client/
-COPY server/package.json server/
+COPY package*.json ./
+COPY client/package*.json client/
+COPY server/package*.json server/
 RUN npm ci
 
 # Build client and server
@@ -18,7 +18,7 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-COPY server/package.json server/
+COPY server/package*.json server/
 RUN cd server && npm ci --omit=dev
 
 COPY --from=builder /app/server/dist server/dist
