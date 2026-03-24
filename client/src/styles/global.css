@@ -67,6 +67,20 @@ h3 {
   font-weight: 600;
 }
 
+@media (max-width: 480px) {
+  h1 {
+    font-size: 1.5rem;
+  }
+
+  h2 {
+    font-size: 1.25rem;
+  }
+
+  h3 {
+    font-size: 1.1rem;
+  }
+}
+
 a {
   color: var(--color-primary);
   text-decoration: none;
@@ -83,6 +97,7 @@ button {
 
 input, textarea, select {
   font-family: var(--font-sans);
+  width: 100%;
 }
 
 .container {

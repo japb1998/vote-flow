@@ -18,6 +18,8 @@
   color: var(--color-text);
   font-size: 1rem;
   transition: border-color 150ms ease, box-shadow 150ms ease;
+  min-height: 44px;
+  width: 100%;
 }
 
 .input:focus {
