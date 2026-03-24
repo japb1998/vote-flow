@@ -36,6 +36,7 @@ export function SessionPage() {
   const [showNameEdit, setShowNameEdit] = useState(false);
   const [tempName, setTempName] = useState('');
   const [copied, setCopied] = useState(false);
+  const [sessionNotFound, setSessionNotFound] = useState(false);
   const rejoinAttempted = useRef(false);
 
   // Auto-rejoin if userId is in URL params (wait for socket connection)
@@ -55,6 +56,10 @@ export function SessionPage() {
   useEffect(() => {
     if (errorCode === 'USER_NOT_FOUND' && !currentSession) {
       setShowNameModal(true);
+    }
+    if (errorCode === 'SESSION_NOT_FOUND') {
+      setSessionNotFound(true);
+      setShowNameModal(false);
     }
   }, [errorCode, currentSession]);
 
@@ -219,6 +224,20 @@ export function SessionPage() {
   };
 
   if (!currentSession) {
+    if (sessionNotFound) {
+      return (
+        <div className={styles.container}>
+          <div className={styles.loading} style={{ flexDirection: 'column', gap: '1rem' }}>
+            <p style={{ fontSize: '1.5rem', fontWeight: 600 }}>Session not found</p>
+            <p style={{ color: 'var(--color-text-muted)' }}>
+              The session <strong>{sessionId}</strong> does not exist or has expired.
+            </p>
+            <Button onClick={() => navigate('/')}>Go Home</Button>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className={styles.container}>
         {showNameModal && (
@@ -226,6 +245,7 @@ export function SessionPage() {
             <Card className={styles.modal}>
               <h2>Join Session</h2>
               <p className={styles.modalDesc}>Enter your name to join the voting session</p>
+              {error && <p className={styles.error} style={{ marginBottom: '1rem' }}>{error}</p>}
               <div className={styles.modalForm}>
                 <Input
                   label="Your Name"
