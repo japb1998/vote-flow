@@ -86,7 +86,7 @@ export function setupSocketHandlers(io: Server, store: SessionStore): void {
         const normalizedId = sessionId.toUpperCase();
         const session = await store.getSession(normalizedId);
         if (!session) {
-          socket.emit('error', { message: 'Session not found' });
+          socket.emit('error', { message: 'Session not found', code: 'SESSION_NOT_FOUND' });
           return;
         }
 
@@ -171,7 +171,7 @@ export function setupSocketHandlers(io: Server, store: SessionStore): void {
 
         const session = await store.getSession(sessionId);
         if (!session) {
-          socket.emit('error', { message: 'Session not found' });
+          socket.emit('error', { message: 'Session not found', code: 'SESSION_NOT_FOUND' });
           return;
         }
 
@@ -224,7 +224,7 @@ export function setupSocketHandlers(io: Server, store: SessionStore): void {
 
         const session = await store.getSession(sessionId);
         if (!session) {
-          socket.emit('error', { message: 'Session not found' });
+          socket.emit('error', { message: 'Session not found', code: 'SESSION_NOT_FOUND' });
           return;
         }
 
