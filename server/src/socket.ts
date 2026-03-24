@@ -101,7 +101,12 @@ export function setupSocketHandlers(io: Server, store: SessionStore): void {
             resolvedName = userName?.trim() ? sanitizeInput(userName) : existingUser.name;
             await store.updateUser(session.id, userId, { name: resolvedName, socketId: socket.id });
           } else {
-            // userId not found in this session — treat as new user
+            // userId not found in this session — closed sessions don't accept new participants
+            if (session.status === 'closed') {
+              socket.emit('error', { message: 'This session has ended', code: 'SESSION_CLOSED' });
+              return;
+            }
+            // treat as new user
             if (!userName || typeof userName !== 'string' || userName.trim().length === 0) {
               socket.emit('error', { message: 'User not found in session', code: 'USER_NOT_FOUND' });
               return;
@@ -116,7 +121,11 @@ export function setupSocketHandlers(io: Server, store: SessionStore): void {
             await store.addUser(session.id, { id: userId, name: resolvedName, socketId: socket.id });
           }
         } else {
-          // No userId — new user, name required
+          // No userId — new user; closed sessions don't accept new participants
+          if (session.status === 'closed') {
+            socket.emit('error', { message: 'This session has ended', code: 'SESSION_CLOSED' });
+            return;
+          }
           if (!userName || typeof userName !== 'string' || userName.trim().length === 0) {
             socket.emit('error', { message: 'User name is required' });
             return;
