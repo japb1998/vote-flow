@@ -13,6 +13,22 @@
   color: var(--color-text-muted);
 }
 
+.errorState {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+}
+
+.errorCard {
+  max-width: 420px;
+  width: 100%;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
 .header {
   display: flex;
   align-items: center;
