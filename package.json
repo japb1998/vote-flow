@@ -11,7 +11,10 @@
     "build:client": "cd client && npm run build",
     "build:server": "cd server && npm run build",
     "start": "cd server && npm start",
-    "install": "npm install --prefix server && npm install --prefix client"
+    "install": "npm install --prefix server && npm install --prefix client",
+    "test": "npm run test:server && npm run test:client",
+    "test:server": "cd server && npm test",
+    "test:client": "cd client && npm test"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"

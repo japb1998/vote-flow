@@ -200,13 +200,15 @@ function calculateScore(votes: Vote[], optionIds: string[]): Results {
   });
 
   let winner: string | undefined;
-  let maxAvg = -1;
-  optionIds.forEach(id => {
-    if (averageScores[id] > maxAvg) {
-      maxAvg = averageScores[id];
-      winner = id;
-    }
-  });
+  if (votes.length > 0) {
+    let maxAvg = -1;
+    optionIds.forEach(id => {
+      if (averageScores[id] > maxAvg) {
+        maxAvg = averageScores[id];
+        winner = id;
+      }
+    });
+  }
 
   return { method: 'score', totals, percentages, winner, averageScores };
 }
