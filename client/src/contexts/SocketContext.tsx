@@ -11,12 +11,13 @@ interface SocketContextType {
   results: Results | null;
   users: UserInfo[];
   createSession: (title: string, votingMethod: string, options: { name: string; description?: string }[]) => void;
-  joinSession: (sessionId: string, userName: string) => void;
+  joinSession: (sessionId: string, userName: string, userId?: string) => void;
   submitVote: (sessionId: string, vote: Omit<Vote, 'id' | 'timestamp'>) => void;
   closeSession: (sessionId: string) => void;
   leaveSession: () => void;
   updateUserName: (newName: string) => void;
   error: string | null;
+  errorCode: string | null;
 }
 
 const SocketContext = createContext<SocketContextType | null>(null);
@@ -30,6 +31,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
   const [results, setResults] = useState<Results | null>(null);
   const [users, setUsers] = useState<UserInfo[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [errorCode, setErrorCode] = useState<string | null>(null);
 
   useEffect(() => {
     const serverUrl = import.meta.env.DEV ? 'http://localhost:3001' : window.location.origin;
@@ -55,12 +57,12 @@ export function SocketProvider({ children }: { children: ReactNode }) {
       setUsers([]);
     });
 
-    newSocket.on('session-joined', ({ session, userId: joinedUserId, userName: joinedUserName, results: sessionResults }) => {
+    newSocket.on('session-joined', ({ session, userId: joinedUserId, userName: joinedUserName, results: sessionResults, users: sessionUsers }) => {
       setCurrentSession(session);
       setUserId(joinedUserId);
       setUserName(joinedUserName);
       setResults(sessionResults);
-      setUsers(session.votes.map((v: Vote) => ({ id: v.userId, name: v.userName })));
+      setUsers(sessionUsers ?? session.votes.map((v: Vote) => ({ id: v.userId, name: v.userName })));
     });
 
     newSocket.on('vote-submitted', ({ sessionId, vote }) => {
@@ -102,10 +104,6 @@ export function SocketProvider({ children }: { children: ReactNode }) {
       setUsers(prev => [...prev.filter(u => u.id !== userId), { id: userId, name: userName }]);
     });
 
-    newSocket.on('user-left', ({ userId }) => {
-      setUsers(prev => prev.filter(u => u.id !== userId));
-    });
-
     newSocket.on('user-name-updated', ({ userId, userName }) => {
       setUsers(prev => prev.map(u => u.id === userId ? { ...u, name: userName } : u));
       if (userId === userId) {
@@ -113,9 +111,10 @@ export function SocketProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    newSocket.on('error', ({ message }) => {
+    newSocket.on('error', ({ message, code }) => {
       setError(message);
-      setTimeout(() => setError(null), 5000);
+      setErrorCode(code || null);
+      setTimeout(() => { setError(null); setErrorCode(null); }, 5000);
     });
 
     setSocket(newSocket);
@@ -129,8 +128,8 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     socket?.emit('create-session', { title, votingMethod, options });
   }, [socket]);
 
-  const joinSession = useCallback((sessionId: string, userName: string) => {
-    socket?.emit('join-session', { sessionId, userName });
+  const joinSession = useCallback((sessionId: string, userName: string, existingUserId?: string) => {
+    socket?.emit('join-session', { sessionId, userName, userId: existingUserId });
   }, [socket]);
 
   const submitVote = useCallback((sessionId: string, vote: Omit<Vote, 'id' | 'timestamp'>) => {
@@ -173,7 +172,8 @@ export function SocketProvider({ children }: { children: ReactNode }) {
       closeSession,
       leaveSession,
       updateUserName,
-      error
+      error,
+      errorCode
     }}>
       {children}
     </SocketContext.Provider>

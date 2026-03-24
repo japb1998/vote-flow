@@ -6,6 +6,7 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import path from 'path';
 import { setupSocketHandlers } from './socket';
+import { createStore } from './store';
 
 const app = express();
 const httpServer = createServer(app);
@@ -73,40 +74,22 @@ const io = new Server(httpServer, {
   httpCompression: false,
 });
 
-io.use((socket, next) => {
-  const ip = socket.handshake.address || socket.conn.remoteAddress || 'unknown';
-  const connectedIPs = new Map<string, { count: number; since: number }>();
-  
-  const now = Date.now();
-  const existing = connectedIPs.get(ip);
-  
-  if (existing) {
-    if (existing.count > 50) {
-      console.warn(`Rate limit exceeded for IP: ${ip}`);
-      return next(new Error('Too many connections from this IP'));
-    }
-    existing.count++;
-  } else {
-    connectedIPs.set(ip, { count: 1, since: now });
-  }
-  
-  setInterval(() => {
-    const old = connectedIPs.get(ip);
-    if (old && now - old.since > 60000) {
-      connectedIPs.delete(ip);
-    }
-  }, 60000);
-  
-  next();
-});
-
-setupSocketHandlers(io);
+const store = createStore();
 
 const PORT = process.env.PORT || 3001;
 
-httpServer.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+store.initialize()
+  .then(() => {
+    setupSocketHandlers(io, store);
+
+    httpServer.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+    });
+  })
+  .catch(err => {
+    console.error('Failed to initialize store:', err);
+    process.exit(1);
+  });
 
 httpServer.timeout = 30000;
 httpServer.keepAliveTimeout = 65000;

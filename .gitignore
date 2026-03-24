@@ -27,3 +27,8 @@ Thumbs.db
 build/
 out/
 .claude/
+.gemini/
+
+# Database
+data/
+*.sqlite

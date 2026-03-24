@@ -56,6 +56,7 @@ export interface CreateSessionPayload {
 export interface JoinSessionPayload {
   sessionId: string;
   userName: string;
+  userId?: string;
 }
 
 export interface SubmitVotePayload {

@@ -6,49 +6,41 @@ import {
   CreateSessionPayload,
   JoinSessionPayload,
   SubmitVotePayload,
-  VotingMethod,
   Option
 } from './types';
 import { generateSessionId, sanitizeInput, sanitizeOptionName, sanitizeOptionDescription, validateSessionPayload, canCreateSession, canJoinSession } from './utils/helpers';
 import { calculateResults } from './voting/calculate';
+import { SessionStore } from './store';
 
-const sessions = new Map<string, Session>();
+const CLOSED_SESSION_TTL = 30 * 60 * 1000;
+const CLEANUP_INTERVAL = 60 * 1000;
 
-interface UserInfo {
-  id: string;
-  name: string;
-  socketId: string;
-}
-
-const sessionUsers = new Map<string, Map<string, UserInfo>>();
-
-const ipSessionCount = new Map<string, number>();
-
-export function setupSocketHandlers(io: Server): void {
+export function setupSocketHandlers(io: Server, store: SessionStore): void {
   io.on('connection', (socket: Socket) => {
-    const clientIp = socket.handshake.address || socket.conn.remoteAddress || 'unknown';
-    console.log(`Client connected: ${socket.id} from ${clientIp}`);
+    const clientIp = (socket.handshake.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim()
+      ?? socket.handshake.address;
+    console.log(`Client connected: ${socket.id}`);
 
-    socket.on('create-session', (payload: CreateSessionPayload) => {
+    socket.on('create-session', async (payload: CreateSessionPayload) => {
       try {
         if (!validateSessionPayload(payload).valid) {
           socket.emit('error', { message: validateSessionPayload(payload).error || 'Invalid payload' });
           return;
         }
 
-        if (!canCreateSession(sessions.size)) {
+        const activeCount = await store.getActiveSessionCount();
+        if (!canCreateSession(activeCount)) {
           socket.emit('error', { message: 'Server is at maximum capacity' });
           return;
         }
 
-        const ipCount = ipSessionCount.get(clientIp) || 0;
+        const ipCount = await store.getIpSessionCount(clientIp);
         if (ipCount >= 5) {
           socket.emit('error', { message: 'Too many sessions created from this IP' });
           return;
         }
 
         const { title, votingMethod, options } = payload;
-
         const sessionId = generateSessionId();
         const creatorId = uuidv4();
 
@@ -63,19 +55,17 @@ export function setupSocketHandlers(io: Server): void {
           title: sanitizeInput(title),
           createdAt: Date.now(),
           status: 'active',
-          votingMethod: votingMethod as VotingMethod,
+          votingMethod,
           options: sanitizedOptions,
           votes: [],
           creatorId
         };
 
-        sessions.set(sessionId, session);
-        sessionUsers.set(sessionId, new Map());
+        await store.createSession(session);
+        await store.addUser(sessionId, { id: creatorId, name: 'Creator', socketId: socket.id });
+        await store.incrementIpSessionCount(clientIp);
 
         socket.join(sessionId);
-        const userInfo: UserInfo = { id: creatorId, name: 'Creator', socketId: socket.id };
-        sessionUsers.get(sessionId)!.set(creatorId, userInfo);
-
         socket.emit('session-created', { session, userId: creatorId });
         console.log(`Session created: ${sessionId}`);
       } catch (error) {
@@ -84,38 +74,64 @@ export function setupSocketHandlers(io: Server): void {
       }
     });
 
-    socket.on('join-session', (payload: JoinSessionPayload) => {
+    socket.on('join-session', async (payload: JoinSessionPayload) => {
       try {
-        const { sessionId, userName } = payload;
+        const { sessionId, userName, userId: existingUserId } = payload;
 
         if (!sessionId || typeof sessionId !== 'string' || sessionId.length !== 6) {
           socket.emit('error', { message: 'Invalid session ID' });
           return;
         }
 
-        const session = sessions.get(sessionId.toUpperCase());
+        const normalizedId = sessionId.toUpperCase();
+        const session = await store.getSession(normalizedId);
         if (!session) {
           socket.emit('error', { message: 'Session not found' });
           return;
         }
 
-        if (!userName || typeof userName !== 'string' || userName.trim().length === 0) {
-          socket.emit('error', { message: 'User name is required' });
-          return;
+        let userId = existingUserId;
+        let resolvedName: string;
+
+        // Try to reconnect with existing userId
+        if (userId) {
+          const existingUser = await store.getUser(session.id, userId);
+          if (existingUser) {
+            // Reconnect: update socket, optionally update name
+            resolvedName = userName?.trim() ? sanitizeInput(userName) : existingUser.name;
+            await store.updateUser(session.id, userId, { name: resolvedName, socketId: socket.id });
+          } else {
+            // userId not found in this session — treat as new user
+            if (!userName || typeof userName !== 'string' || userName.trim().length === 0) {
+              socket.emit('error', { message: 'User not found in session', code: 'USER_NOT_FOUND' });
+              return;
+            }
+            const userCount = await store.getUserCount(session.id);
+            if (!canJoinSession(userCount)) {
+              socket.emit('error', { message: 'Session is full' });
+              return;
+            }
+            userId = uuidv4();
+            resolvedName = sanitizeInput(userName);
+            await store.addUser(session.id, { id: userId, name: resolvedName, socketId: socket.id });
+          }
+        } else {
+          // No userId — new user, name required
+          if (!userName || typeof userName !== 'string' || userName.trim().length === 0) {
+            socket.emit('error', { message: 'User name is required' });
+            return;
+          }
+          const userCount = await store.getUserCount(session.id);
+          if (!canJoinSession(userCount)) {
+            socket.emit('error', { message: 'Session is full' });
+            return;
+          }
+          userId = uuidv4();
+          resolvedName = sanitizeInput(userName);
+          await store.addUser(session.id, { id: userId, name: resolvedName, socketId: socket.id });
         }
 
-        const currentUsers = sessionUsers.get(sessionId)?.size || 0;
-        if (!canJoinSession(currentUsers)) {
-          socket.emit('error', { message: 'Session is full' });
-          return;
-        }
-
-        const userId = uuidv4();
-        socket.join(sessionId);
-
-        const sanitizedName = sanitizeInput(userName);
-        const userInfo: UserInfo = { id: userId, name: sanitizedName, socketId: socket.id };
-        sessionUsers.get(sessionId)!.set(userId, userInfo);
+        socket.join(session.id);
 
         const results = calculateResults(
           session.votes,
@@ -123,17 +139,19 @@ export function setupSocketHandlers(io: Server): void {
           session.votingMethod
         );
 
-        socket.emit('session-joined', { session, userId, userName: sanitizedName, results });
-        socket.to(sessionId).emit('user-joined', { userId, userName: sanitizedName });
-        
-        console.log(`User ${sanitizedName} joined session ${sessionId}`);
+        const usersMap = await store.getUsers(session.id);
+        const usersList = Array.from(usersMap.values()).map(u => ({ id: u.id, name: u.name }));
+
+        socket.emit('session-joined', { session, userId, userName: resolvedName, results, users: usersList });
+        socket.to(session.id).emit('user-joined', { userId, userName: resolvedName });
+        console.log(`User ${resolvedName} joined session ${session.id}`);
       } catch (error) {
         console.error('Error joining session:', error);
         socket.emit('error', { message: 'Failed to join session' });
       }
     });
 
-    socket.on('submit-vote', (payload: SubmitVotePayload) => {
+    socket.on('submit-vote', async (payload: SubmitVotePayload) => {
       try {
         const { sessionId, vote } = payload;
 
@@ -142,7 +160,7 @@ export function setupSocketHandlers(io: Server): void {
           return;
         }
 
-        const session = sessions.get(sessionId);
+        const session = await store.getSession(sessionId);
         if (!session) {
           socket.emit('error', { message: 'Session not found' });
           return;
@@ -158,34 +176,32 @@ export function setupSocketHandlers(io: Server): void {
           return;
         }
 
-        const existingVoteIndex = session.votes.findIndex(v => v.userId === vote.userId);
-        if (existingVoteIndex !== -1) {
-          session.votes[existingVoteIndex] = {
-            ...vote,
-            id: uuidv4(),
-            timestamp: Date.now()
-          };
-        } else {
-          const newVote: Vote = {
-            ...vote,
-            id: uuidv4(),
-            timestamp: Date.now()
-          };
-          session.votes.push(newVote);
+        const user = await store.getUser(sessionId, vote.userId);
+        if (!user) {
+          socket.emit('error', { message: 'User not found in session' });
+          return;
         }
 
+        const voteId = uuidv4();
+        const savedVote: Vote = {
+          id: voteId,
+          userId: vote.userId,
+          userName: user.name,
+          selection: vote.selection,
+          timestamp: Date.now()
+        };
+
+        await store.upsertVote(sessionId, savedVote);
+
+        const votes = await store.getVotes(sessionId);
         const results = calculateResults(
-          session.votes,
+          votes,
           session.options.map(o => o.id),
           session.votingMethod
         );
 
-        io.to(sessionId).emit('vote-submitted', { 
-          sessionId, 
-          vote: session.votes[session.votes.length - 1] 
-        });
+        io.to(sessionId).emit('vote-submitted', { sessionId, vote: savedVote });
         io.to(sessionId).emit('results-updated', { sessionId, results });
-        
         console.log(`Vote submitted in session ${sessionId}`);
       } catch (error) {
         console.error('Error submitting vote:', error);
@@ -193,11 +209,11 @@ export function setupSocketHandlers(io: Server): void {
       }
     });
 
-    socket.on('close-session', (payload: { sessionId: string; userId: string }) => {
+    socket.on('close-session', async (payload: { sessionId: string; userId: string }) => {
       try {
         const { sessionId, userId } = payload;
 
-        const session = sessions.get(sessionId);
+        const session = await store.getSession(sessionId);
         if (!session) {
           socket.emit('error', { message: 'Session not found' });
           return;
@@ -208,8 +224,11 @@ export function setupSocketHandlers(io: Server): void {
           return;
         }
 
+        const now = Date.now();
+        await store.updateSession(sessionId, { status: 'closed', closedAt: now });
+
         session.status = 'closed';
-        session.closedAt = Date.now();
+        session.closedAt = now;
 
         const results = calculateResults(
           session.votes,
@@ -225,48 +244,41 @@ export function setupSocketHandlers(io: Server): void {
       }
     });
 
-    socket.on('update-user-name', (payload: { userId: string; userName: string }) => {
+    socket.on('update-user-name', async (payload: { userId: string; userName: string }) => {
       try {
         const { userId, userName } = payload;
-        
-        sessionUsers.forEach((users, sessionId) => {
-          const userInfo = users.get(userId);
-          if (userInfo) {
-            userInfo.name = sanitizeInput(userName);
-            users.set(userId, userInfo);
-            socket.to(sessionId).emit('user-name-updated', { userId, userName: sanitizeInput(userName) });
-          }
-        });
+        const sanitizedName = sanitizeInput(userName);
+
+        const sessionIds = await store.findUserSessions(userId);
+        for (const sessionId of sessionIds) {
+          await store.updateUser(sessionId, userId, { name: sanitizedName });
+          socket.to(sessionId).emit('user-name-updated', { userId, userName: sanitizedName });
+        }
       } catch (error) {
         console.error('Error updating user name:', error);
       }
     });
 
-    socket.on('disconnect', () => {
+    socket.on('disconnect', async () => {
       console.log(`Client disconnected: ${socket.id}`);
-      
-      sessionUsers.forEach((users, sessionId) => {
-        users.forEach((userInfo, odId) => {
-          if (userInfo.socketId === socket.id) {
-            users.delete(odId);
-            socket.to(sessionId).emit('user-left', { userId: odId });
-          }
-        });
-      });
+      try {
+        // Clear the socketId but keep the user in the session — they can rejoin
+        await store.removeUserBySocketId(socket.id);
+      } catch (error) {
+        console.error('Error handling disconnect:', error);
+      }
     });
   });
 
-  const CLOSED_SESSION_TTL = 30 * 60 * 1000;
-  setInterval(() => {
-    const now = Date.now();
-    sessions.forEach((session, sessionId) => {
-      if (session.status === 'closed' && session.closedAt) {
-        if (now - session.closedAt > CLOSED_SESSION_TTL) {
-          sessions.delete(sessionId);
-          sessionUsers.delete(sessionId);
-          console.log(`Session ${sessionId} expired and removed`);
-        }
+  // Periodic cleanup of expired sessions
+  setInterval(async () => {
+    try {
+      const cleaned = await store.cleanupExpiredSessions(CLOSED_SESSION_TTL);
+      if (cleaned > 0) {
+        console.log(`Cleaned up ${cleaned} expired sessions`);
       }
-    });
-  }, 60 * 1000);
+    } catch (error) {
+      console.error('Error during cleanup:', error);
+    }
+  }, CLEANUP_INTERVAL);
 }

@@ -24,8 +24,11 @@ RUN cd server && npm ci --omit=dev
 COPY --from=builder /app/server/dist server/dist
 COPY --from=builder /app/client/dist client/dist
 
+RUN mkdir -p /app/data
+
 ENV NODE_ENV=production
 ENV PORT=3001
+ENV DATABASE_PATH=/app/data/voteflow.db
 
 EXPOSE 3001
 

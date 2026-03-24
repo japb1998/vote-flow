@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useSocket } from '../contexts/SocketContext';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
@@ -26,8 +26,9 @@ const methodColors: Record<VotingMethod, 'info' | 'default'> = {
 
 export function SessionPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { currentSession, userId, userName, results, users, joinSession, submitVote, closeSession, leaveSession, updateUserName, error } = useSocket();
+  const { currentSession, userId, userName, results, users, joinSession, submitVote, closeSession, leaveSession, updateUserName, error, errorCode, isConnected } = useSocket();
   const [selection, setSelection] = useState<Selection | null>(null);
   const [hasVoted, setHasVoted] = useState(false);
   const [showResults, setShowResults] = useState(true);
@@ -35,14 +36,40 @@ export function SessionPage() {
   const [showNameEdit, setShowNameEdit] = useState(false);
   const [tempName, setTempName] = useState('');
   const [copied, setCopied] = useState(false);
+  const rejoinAttempted = useRef(false);
 
+  // Auto-rejoin if userId is in URL params (wait for socket connection)
   useEffect(() => {
-    if (!currentSession && sessionId) {
+    if (!currentSession && sessionId && isConnected && !rejoinAttempted.current) {
+      const urlUserId = searchParams.get('userId');
+      if (urlUserId) {
+        rejoinAttempted.current = true;
+        joinSession(sessionId.toUpperCase(), '', urlUserId);
+      } else {
+        setShowNameModal(true);
+      }
+    }
+  }, [sessionId, currentSession, searchParams, joinSession, isConnected]);
+
+  // If rejoin failed (user not found), show name modal for fresh join
+  useEffect(() => {
+    if (errorCode === 'USER_NOT_FOUND' && !currentSession) {
       setShowNameModal(true);
     }
-  }, [sessionId, currentSession]);
+  }, [errorCode, currentSession]);
+
+  // Persist userId in URL after successful join
+  useEffect(() => {
+    if (userId && sessionId) {
+      const currentUrlUserId = searchParams.get('userId');
+      if (currentUrlUserId !== userId) {
+        setSearchParams({ userId }, { replace: true });
+      }
+    }
+  }, [userId, sessionId, searchParams, setSearchParams]);
 
   const handleShare = async () => {
+    // Share a clean URL without userId so recipients join as new users
     const url = `${window.location.origin}/session/${currentSession?.id}`;
     try {
       await navigator.clipboard.writeText(url);
@@ -67,7 +94,7 @@ export function SessionPage() {
 
   const handleJoinWithName = () => {
     if (tempName.trim() && sessionId) {
-      joinSession(sessionId, tempName.trim());
+      joinSession(sessionId.toUpperCase(), tempName.trim());
       setShowNameModal(false);
     }
   };
