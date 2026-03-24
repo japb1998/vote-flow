@@ -4,14 +4,18 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
+import path from 'path';
 import { setupSocketHandlers } from './socket';
 
 const app = express();
 const httpServer = createServer(app);
 
-const allowedOrigins = process.env.ALLOWED_ORIGINS 
+const isProduction = process.env.NODE_ENV === 'production';
+const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',')
-  : ['http://localhost:5173', 'http://127.0.0.1:5173'];
+  : isProduction
+    ? [] // Same-origin in production, no CORS needed
+    : ['http://localhost:5173', 'http://127.0.0.1:5173'];
 
 const corsOptions = {
   origin: allowedOrigins,
@@ -49,6 +53,15 @@ app.use(globalLimiter);
 
 app.get('/health', (_, res) => {
   res.json({ status: 'ok', timestamp: Date.now() });
+});
+
+// Serve static client files in production
+const clientDistPath = path.join(__dirname, '../../client/dist');
+app.use(express.static(clientDistPath));
+
+// SPA fallback: serve index.html for all non-API routes
+app.get('*', (_, res) => {
+  res.sendFile(path.join(clientDistPath, 'index.html'));
 });
 
 const io = new Server(httpServer, {
