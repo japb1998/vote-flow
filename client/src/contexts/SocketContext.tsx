@@ -32,7 +32,8 @@ export function SocketProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const newSocket = io('http://localhost:3001', {
+    const serverUrl = import.meta.env.DEV ? 'http://localhost:3001' : window.location.origin;
+    const newSocket = io(serverUrl, {
       transports: ['websocket', 'polling']
     });
 
