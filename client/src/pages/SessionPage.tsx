@@ -37,6 +37,7 @@ export function SessionPage() {
   const [tempName, setTempName] = useState('');
   const [copied, setCopied] = useState(false);
   const [sessionEnded, setSessionEnded] = useState(false);
+  const [sessionNotFound, setSessionNotFound] = useState(false);
   const rejoinAttempted = useRef(false);
 
   // Auto-rejoin if userId is in URL params (wait for socket connection)
@@ -63,6 +64,9 @@ export function SessionPage() {
   useEffect(() => {
     if (errorCode === 'SESSION_CLOSED') {
       setSessionEnded(true);
+    }
+    if (errorCode === 'SESSION_NOT_FOUND') {
+      setSessionNotFound(true);
     }
   }, [errorCode]);
 
@@ -227,6 +231,20 @@ export function SessionPage() {
   };
 
   if (!currentSession) {
+    if (sessionNotFound) {
+      return (
+        <div className={styles.container}>
+          <div className={styles.errorState}>
+            <Card className={styles.errorCard}>
+              <h2>Session Not Found</h2>
+              <p>The session you are looking for does not exist. Please check the session ID and try again.</p>
+              <Button onClick={() => navigate('/')}>Back to Home</Button>
+            </Card>
+          </div>
+        </div>
+      );
+    }
+
     if (sessionEnded) {
       return (
         <div className={styles.container}>

@@ -171,7 +171,7 @@ describe('join-session handler — closed sessions', () => {
 
     await handlers['join-session']({ sessionId: 'XXXXXX', userName: 'Dave' });
 
-    expect(socket.emit).toHaveBeenCalledWith('error', { message: 'Session not found' });
+    expect(socket.emit).toHaveBeenCalledWith('error', { message: 'Session not found', code: 'SESSION_NOT_FOUND' });
   });
 
   it('returns USER_NOT_FOUND when reconnecting user is missing from an active session', async () => {
