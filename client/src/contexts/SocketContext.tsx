@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
+import React, { useRef, createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { Session, Results, Vote, UserInfo } from '../types';
 
@@ -32,7 +32,14 @@ export function SocketProvider({ children }: { children: ReactNode }) {
   const [users, setUsers] = useState<UserInfo[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [errorCode, setErrorCode] = useState<string | null>(null);
+  
+  const userIdRef = useRef( userId);
+  const userNameRef = useRef(userName);
+  const sessionRef = useRef(currentSession);
 
+  useEffect(() => { sessionRef.current = currentSession; }, [currentSession]);
+  useEffect(() => { userIdRef.current = userId }, [userId]);
+  useEffect(() => { userNameRef.current = userName; }, [userName]);
   useEffect(() => {
     const serverUrl = import.meta.env.DEV ? 'http://localhost:3001' : window.location.origin;
     const newSocket = io(serverUrl, {
@@ -42,6 +49,15 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     newSocket.on('connect', () => {
       setIsConnected(true);
       console.log('Connected to server');
+      
+      // handle reconnection logic
+      if (userIdRef.current && sessionRef.current) {
+        newSocket.emit('join-session', {
+          sessionId: sessionRef.current.id,
+          userName: userNameRef.current || 'Reconnected User',
+          userId: userIdRef.current
+        })
+      }
     });
 
     newSocket.on('disconnect', () => {

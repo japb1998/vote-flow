@@ -79,7 +79,7 @@ export function setupSocketHandlers(io: Server, store: SessionStore): void {
         const { sessionId, userName, userId: existingUserId } = payload;
 
         if (!sessionId || typeof sessionId !== 'string' || sessionId.length !== 6) {
-          socket.emit('error', { message: 'Invalid session ID' });
+          socket.emit('error', { message: 'Invalid session ID', code: 'INVALID_SESSION_ID' });
           return;
         }
 
