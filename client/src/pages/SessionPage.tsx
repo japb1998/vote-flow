@@ -36,6 +36,8 @@ export function SessionPage() {
   const [showNameEdit, setShowNameEdit] = useState(false);
   const [tempName, setTempName] = useState('');
   const [copied, setCopied] = useState(false);
+  const [sessionEnded, setSessionEnded] = useState(false);
+  const [sessionNotFound, setSessionNotFound] = useState(false);
   const rejoinAttempted = useRef(false);
 
   // Auto-rejoin if userId is in URL params (wait for socket connection)
@@ -57,6 +59,16 @@ export function SessionPage() {
       setShowNameModal(true);
     }
   }, [errorCode, currentSession]);
+
+  // Capture session-closed error permanently so it persists after the auto-clear
+  useEffect(() => {
+    if (errorCode === 'SESSION_CLOSED') {
+      setSessionEnded(true);
+    }
+    if (errorCode === 'SESSION_NOT_FOUND') {
+      setSessionNotFound(true);
+    }
+  }, [errorCode]);
 
   // Persist userId in URL after successful join
   useEffect(() => {
@@ -219,6 +231,34 @@ export function SessionPage() {
   };
 
   if (!currentSession) {
+    if (sessionNotFound) {
+      return (
+        <div className={styles.container}>
+          <div className={styles.errorState}>
+            <Card className={styles.errorCard}>
+              <h2>Session Not Found</h2>
+              <p>The session you are looking for does not exist. Please check the session ID and try again.</p>
+              <Button onClick={() => navigate('/')}>Back to Home</Button>
+            </Card>
+          </div>
+        </div>
+      );
+    }
+
+    if (sessionEnded) {
+      return (
+        <div className={styles.container}>
+          <div className={styles.errorState}>
+            <Card className={styles.errorCard}>
+              <h2>Session Ended</h2>
+              <p>This voting session has ended and is no longer accepting new participants.</p>
+              <Button onClick={() => navigate('/')}>Back to Home</Button>
+            </Card>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className={styles.container}>
         {showNameModal && (
