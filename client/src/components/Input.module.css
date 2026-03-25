@@ -1,54 +1,52 @@
-/* M3 outlined text field with Zero-UI underline minimalism.
-   Clean border, no background fill. Focus uses primary color + ring. */
+/* M3 Expressive Input — spring focus, outlined style */
 
 .wrapper {
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);
+  width: 100%;
 }
 
 .label {
-  font-size: var(--md-type-label);
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
   font-weight: 500;
-  color: var(--md-color-on-surface-variant);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
 }
 
 .input {
   padding: var(--space-sm) var(--space-md);
-  background-color: transparent;
-  border: 1px solid var(--md-color-outline);
-  border-radius: var(--md-shape-sm);
-  color: var(--md-color-on-surface);
-  font-size: var(--md-type-body);
+  background-color: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--shape-sm);
+  color: var(--color-text);
+  font-size: 1rem;
   min-height: 44px;
   width: 100%;
   transition:
-    border-color var(--md-motion-duration-short) var(--md-motion-effect-fast),
-    box-shadow var(--md-motion-duration-short) var(--md-motion-effect-fast);
+    border-color var(--duration-short) var(--spring-effect-fast),
+    box-shadow var(--duration-medium) var(--spring-effect);
 }
 
 .input:focus {
   outline: none;
-  border-color: var(--md-color-primary);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--md-color-primary) 15%, transparent);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 20%, transparent);
 }
 
 .input::placeholder {
-  color: var(--md-color-on-surface-variant);
+  color: var(--color-text-muted);
 }
 
 .hasError {
-  border-color: var(--md-color-error);
+  border-color: var(--color-danger);
 }
 
 .hasError:focus {
-  border-color: var(--md-color-error);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--md-color-error) 15%, transparent);
+  border-color: var(--color-danger);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
 }
 
 .error {
-  font-size: var(--md-type-label);
-  color: var(--md-color-error);
+  font-size: 0.75rem;
+  color: var(--color-danger);
 }

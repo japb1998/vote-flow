@@ -1,32 +1,30 @@
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import styles from './ThemeToggle.module.css';
 
-/**
- * Dark/light theme toggle.
- * Reads OS preference on first load, then defers to localStorage.
- * Sets data-theme attribute on <html> for CSS variable switching.
- */
+function getInitialTheme(): 'light' | 'dark' {
+  const stored = localStorage.getItem('vf-theme');
+  if (stored === 'light' || stored === 'dark') return stored;
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+
 export function ThemeToggle() {
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    const stored = localStorage.getItem('vf-theme');
-    if (stored === 'light' || stored === 'dark') return stored;
-    return window.matchMedia('(prefers-color-scheme: dark)').matches
-      ? 'dark'
-      : 'light';
-  });
+  const [theme, setTheme] = useState<'light' | 'dark'>(getInitialTheme);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('vf-theme', theme);
   }, [theme]);
 
+  const toggle = () => setTheme(t => t === 'dark' ? 'light' : 'dark');
+
   return (
     <button
       className={styles.toggle}
-      onClick={() => setTheme(t => (t === 'dark' ? 'light' : 'dark'))}
+      onClick={toggle}
       aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+      title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
     >
-      {theme === 'dark' ? '\u2600' : '\u263E'}
+      <span className={styles.icon}>{theme === 'dark' ? '☀' : '☾'}</span>
     </button>
   );
 }

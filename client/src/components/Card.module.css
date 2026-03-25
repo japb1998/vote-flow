@@ -1,26 +1,23 @@
-/* Zero-UI: transparent container by default.
-   Content IS the interface — cards provide structure, not decoration.
-   M3 shape-lg for corner radius when hoverable. */
+/* M3 Expressive Card — spring elevation, surface container */
 
 .card {
-  background: transparent;
-  border: none;
-  box-shadow: none;
-  border-radius: var(--md-shape-lg);
+  background-color: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--shape-md);
   padding: var(--space-lg);
   transition:
-    box-shadow var(--md-motion-duration-medium) var(--md-motion-effect-fast),
-    background var(--md-motion-duration-short) var(--md-motion-effect-fast),
-    transform var(--md-motion-duration-medium) var(--md-motion-spatial-normal);
-}
-
-/* Hoverable cards get M3 surface + elevation on hover */
-.hoverable {
-  background: var(--md-color-surface-container-low);
-  box-shadow: var(--md-elevation-1);
+    box-shadow var(--duration-medium) var(--spring-effect),
+    transform var(--duration-medium) var(--spring-spatial),
+    border-color var(--duration-short) var(--spring-effect-fast);
+  animation: fadeUp var(--duration-medium) var(--spring-effect) both;
 }
 
 .hoverable:hover {
-  box-shadow: var(--md-elevation-2);
+  box-shadow: var(--elevation-2);
   transform: translateY(-2px);
+  border-color: var(--color-primary);
+}
+
+.hoverable:active {
+  transform: translateY(0) scale(0.99);
 }

@@ -1,76 +1,85 @@
-/* Accordion info panels — Zero-UI clean borders, M3 surface containers. */
+/* M3 Expressive VotingMethodInfo */
 
 .container {
   margin-top: var(--space-md);
 }
 
 .toggleBtn {
+  position: relative;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: space-between;
   width: 100%;
   padding: var(--space-sm) var(--space-md);
-  background-color: transparent;
-  border: 1px solid var(--md-color-outline-variant);
-  border-radius: var(--md-shape-sm);
-  color: var(--md-color-on-surface-variant);
-  font-size: var(--md-type-body-sm);
+  background-color: var(--color-surface-container);
+  border: 1px solid var(--color-border);
+  border-radius: var(--shape-sm);
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
   cursor: pointer;
   transition:
-    background var(--md-motion-duration-short) var(--md-motion-effect-fast),
-    color var(--md-motion-duration-short) var(--md-motion-effect-fast);
+    background-color var(--duration-short) var(--spring-effect-fast),
+    border-color var(--duration-short) var(--spring-effect-fast),
+    color var(--duration-short) var(--spring-effect-fast);
 }
 
 .toggleBtn:hover {
-  background-color: var(--md-color-surface-container);
-  color: var(--md-color-on-surface);
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  border-color: var(--color-primary);
 }
 
 .toggleIcon {
-  font-size: var(--md-type-label);
+  font-size: 0.75rem;
+  transition: transform var(--duration-medium) var(--spring-spatial);
 }
 
 .infoCard {
   margin-top: var(--space-sm);
   padding: var(--space-md);
-  background: var(--md-color-surface-container-low);
-  border-radius: var(--md-shape-md);
+  animation: fadeUp var(--duration-medium) var(--spring-effect) both;
 }
 
 .infoTitle {
-  font-size: var(--md-type-body);
+  font-size: 1rem;
   margin-bottom: var(--space-xs);
-  color: var(--md-color-primary);
+  color: var(--color-primary);
 }
 
 .infoDesc {
-  font-size: var(--md-type-body-sm);
-  color: var(--md-color-on-surface);
+  font-size: 0.875rem;
+  color: var(--color-text);
   margin-bottom: var(--space-sm);
 }
 
 .infoExample {
-  font-size: var(--md-type-body-sm);
-  color: var(--md-color-on-surface-variant);
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
 }
 
 .fullContainer {
   margin-top: var(--space-xl);
   padding-top: var(--space-lg);
-  border-top: var(--divider);
+  border-top: 1px solid var(--color-border);
 }
 
 .sectionTitle {
-  font-size: var(--md-type-title);
+  font-size: 1.125rem;
   margin-bottom: var(--space-md);
-  color: var(--md-color-on-surface);
+  color: var(--color-text);
 }
 
 .methodItem {
   margin-bottom: var(--space-sm);
-  border: 1px solid var(--md-color-outline-variant);
-  border-radius: var(--md-shape-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--shape-sm);
   overflow: hidden;
+  transition: border-color var(--duration-short) var(--spring-effect-fast);
+}
+
+.methodItem:hover {
+  border-color: var(--color-primary);
 }
 
 .methodHeader {
@@ -79,25 +88,26 @@
   justify-content: space-between;
   width: 100%;
   padding: var(--space-md);
-  background-color: var(--md-color-surface-container-low);
+  background-color: var(--color-bg-elevated);
   border: none;
-  color: var(--md-color-on-surface);
-  font-size: var(--md-type-body-sm);
+  color: var(--color-text);
+  font-size: 0.9375rem;
   font-weight: 500;
   cursor: pointer;
-  transition: background-color var(--md-motion-duration-short) var(--md-motion-effect-fast);
+  transition: background-color var(--duration-short) var(--spring-effect-fast);
 }
 
 .methodHeader:hover {
-  background-color: var(--md-color-surface-container);
+  background-color: var(--color-surface-container-high);
 }
 
 .methodContent {
   padding: var(--space-md);
-  background-color: var(--md-color-surface);
-  font-size: var(--md-type-body-sm);
-  color: var(--md-color-on-surface-variant);
+  background-color: var(--color-bg);
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
   line-height: 1.6;
+  animation: fadeUp var(--duration-short) var(--spring-effect) both;
 }
 
 .methodContent p {

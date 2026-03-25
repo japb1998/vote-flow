@@ -1,10 +1,10 @@
-/* SessionPage — M3 Expressive shape morphing on options + Zero-UI layout. */
+/* SessionPage — M3 Expressive: shape morphing, state layers, spring motion */
 
 .container {
   max-width: 1200px;
   margin: 0 auto;
   padding: var(--space-lg);
-  animation: fadeUp var(--md-motion-duration-medium) var(--md-motion-effect-fast);
+  animation: fadeUp var(--duration-medium) var(--spring-effect) both;
   min-width: 0;
   overflow-x: hidden;
 }
@@ -14,7 +14,7 @@
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  color: var(--md-color-on-surface-variant);
+  color: var(--color-text-muted);
 }
 
 .errorState {
@@ -31,13 +31,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-md);
-  background: var(--md-color-surface-container-low);
-  box-shadow: var(--md-elevation-1);
-  border-radius: var(--md-shape-lg);
-  padding: var(--space-xl);
 }
-
-/* --- Header --- */
 
 .header {
   display: flex;
@@ -45,7 +39,7 @@
   gap: var(--space-lg);
   margin-bottom: var(--space-xl);
   padding-bottom: var(--space-lg);
-  border-bottom: var(--divider);
+  border-bottom: 1px solid var(--color-border);
   flex-wrap: wrap;
 }
 
@@ -54,7 +48,7 @@
 }
 
 .title {
-  font-size: var(--md-type-headline);
+  font-size: 1.75rem;
   margin-bottom: var(--space-xs);
   overflow-wrap: break-word;
   word-break: break-word;
@@ -69,46 +63,49 @@
 
 .sessionId {
   font-family: var(--font-mono);
-  font-size: var(--md-type-body-sm);
-  color: var(--md-color-on-surface-variant);
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
   overflow-wrap: break-word;
   word-break: break-all;
 }
 
 .shareBtn {
+  position: relative;
+  overflow: hidden;
   padding: var(--space-xs) var(--space-sm);
-  background-color: transparent;
-  border: 1px solid var(--md-color-outline-variant);
-  border-radius: var(--md-shape-full);
-  color: var(--md-color-on-surface-variant);
-  font-size: var(--md-type-label);
+  background-color: var(--color-surface-container);
+  border: 1px solid var(--color-border);
+  border-radius: var(--shape-full);
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
   cursor: pointer;
   min-height: 36px;
   min-width: 44px;
   transition:
-    background var(--md-motion-duration-short) var(--md-motion-effect-fast),
-    color var(--md-motion-duration-short) var(--md-motion-effect-fast),
-    border-color var(--md-motion-duration-short) var(--md-motion-effect-fast);
+    background-color var(--duration-short) var(--spring-effect-fast),
+    border-color var(--duration-short) var(--spring-effect-fast),
+    color var(--duration-short) var(--spring-effect-fast),
+    transform var(--duration-medium) var(--spring-spatial);
+}
+
+.shareBtn:active {
+  transform: scale(0.95);
 }
 
 .shareBtn:hover {
-  background-color: var(--md-color-primary);
-  border-color: var(--md-color-primary);
-  color: var(--md-color-on-primary);
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-on-primary);
 }
-
-/* --- Error banner --- */
 
 .error {
   padding: var(--space-md);
-  background-color: var(--md-color-error-container);
-  border: 1px solid var(--md-color-error);
-  border-radius: var(--md-shape-md);
-  color: var(--md-color-on-error-container);
+  background-color: rgba(239, 68, 68, 0.1);
+  border: 1px solid var(--color-danger);
+  border-radius: var(--shape-sm);
+  color: var(--color-danger);
   margin-bottom: var(--space-lg);
 }
-
-/* --- Content grid --- */
 
 .content {
   display: grid;
@@ -136,15 +133,9 @@
 }
 
 .instruction {
-  color: var(--md-color-on-surface-variant);
+  color: var(--color-text-muted);
   margin-bottom: var(--space-lg);
-  font-size: var(--md-type-body-sm);
 }
-
-/* --- Option Cards: M3 Shape Morphing ---
-   Default: md radius (12px)
-   Selected: morphs to xl radius (28px) with spring easing
-   Uses primary-container for selected state. */
 
 .options {
   display: flex;
@@ -152,92 +143,97 @@
   gap: var(--space-sm);
 }
 
+/* --- Option Card: M3 shape morphing + state layer --- */
+
 .option {
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--space-md);
   padding: var(--space-md);
-  background-color: var(--md-color-surface-container);
-  border: 2px solid var(--md-color-outline-variant);
-  border-radius: var(--md-shape-md);
+  background-color: var(--color-bg);
+  border: 2px solid var(--color-border);
+  border-radius: var(--shape-md);
   cursor: pointer;
-  position: relative;
   overflow: hidden;
-  /* M3 spring transition for shape morph */
   transition:
-    border-radius var(--md-motion-duration-medium) var(--md-motion-spatial-fast),
-    background-color var(--md-motion-duration-short) var(--md-motion-effect-fast),
-    border-color var(--md-motion-duration-short) var(--md-motion-effect-fast),
-    box-shadow var(--md-motion-duration-short) var(--md-motion-effect-fast);
+    border-color var(--duration-short) var(--spring-effect-fast),
+    border-radius var(--duration-long) var(--spring-spatial),
+    background-color var(--duration-short) var(--spring-effect-fast),
+    transform var(--duration-medium) var(--spring-spatial);
 }
 
-/* M3 State layer */
+/* State layer */
 .option::before {
   content: '';
   position: absolute;
   inset: 0;
-  border-radius: inherit;
-  background: var(--md-color-on-surface);
+  background: var(--color-primary);
   opacity: 0;
-  transition: opacity var(--md-motion-duration-short) var(--md-motion-effect-fast);
+  transition: opacity var(--duration-short) var(--spring-effect-fast);
   pointer-events: none;
 }
 
 .option:hover::before {
-  opacity: 0.08;
+  opacity: var(--color-state-layer-opacity);
+}
+
+.option:active {
+  transform: scale(0.98);
+}
+
+.option:active::before {
+  opacity: calc(var(--color-state-layer-opacity) * 2);
 }
 
 .option:hover {
-  border-color: var(--md-color-primary);
+  border-color: var(--color-primary);
 }
 
-/* SELECTED: shape morphs from md (12px) to xl (28px) */
+/* Shape morphing: md → xl on selection */
 .option.selected {
-  border-radius: var(--md-shape-xl);
-  border-color: var(--md-color-primary);
-  background-color: var(--md-color-primary-container);
-  box-shadow: var(--md-elevation-1);
+  border-color: var(--color-primary);
+  border-radius: var(--shape-xl);
+  background-color: color-mix(in srgb, var(--color-primary) 10%, transparent);
 }
-
-/* --- Checkbox --- */
 
 .checkbox {
   width: 24px;
   height: 24px;
-  border: 2px solid var(--md-color-outline);
-  border-radius: var(--md-shape-xs);
+  border: 2px solid var(--color-border);
+  border-radius: var(--shape-xs);
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: bold;
   flex-shrink: 0;
   transition:
-    background var(--md-motion-duration-short) var(--md-motion-effect-fast),
-    border-color var(--md-motion-duration-short) var(--md-motion-effect-fast),
-    border-radius var(--md-motion-duration-medium) var(--md-motion-spatial-fast);
+    background-color var(--duration-short) var(--spring-effect-fast),
+    border-color var(--duration-short) var(--spring-effect-fast),
+    transform var(--duration-medium) var(--spring-spatial);
 }
 
 .checkbox.checked {
-  background-color: var(--md-color-primary);
-  border-color: var(--md-color-primary);
-  color: var(--md-color-on-primary);
-  /* Checkbox morphs to circle when checked */
-  border-radius: var(--md-shape-full);
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+  color: white;
+  animation: checkPop var(--duration-medium) var(--spring-spatial);
 }
-
-/* --- Rank & Score numbers --- */
 
 .rankNumber,
 .scoreNumber {
   width: 32px;
   height: 32px;
-  border-radius: var(--md-shape-full);
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 700;
-  font-size: var(--md-type-body-sm);
+  font-size: 0.875rem;
   flex-shrink: 0;
+  transition:
+    transform var(--duration-medium) var(--spring-spatial),
+    background-color var(--duration-short) var(--spring-effect-fast);
 }
 
 .rankNumber {
@@ -253,10 +249,7 @@
 .optionName {
   flex: 1;
   font-weight: 500;
-  color: var(--md-color-on-surface);
 }
-
-/* --- Score buttons: M3 shape morph to circle when active --- */
 
 .scoreButtons {
   display: flex;
@@ -264,23 +257,46 @@
   flex-wrap: wrap;
 }
 
+/* Score button: M3 shape morphing (square → circle on active) + state layer */
 .scoreBtn {
+  position: relative;
+  overflow: hidden;
   min-width: 44px;
   min-height: 44px;
-  border: 1px solid var(--md-color-outline-variant);
-  border-radius: var(--md-shape-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--shape-sm);
   background: transparent;
-  color: var(--md-color-on-surface-variant);
+  color: var(--color-text-muted);
   font-weight: 600;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   transition:
-    border-radius var(--md-motion-duration-medium) var(--md-motion-spatial-fast),
-    background var(--md-motion-duration-short) var(--md-motion-effect-fast),
-    border-color var(--md-motion-duration-short) var(--md-motion-effect-fast),
-    color var(--md-motion-duration-short) var(--md-motion-effect-fast);
+    border-color var(--duration-short) var(--spring-effect-fast),
+    border-radius var(--duration-long) var(--spring-spatial),
+    background-color var(--duration-short) var(--spring-effect-fast),
+    color var(--duration-short) var(--spring-effect-fast),
+    transform var(--duration-medium) var(--spring-spatial);
+}
+
+.scoreBtn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--color-score);
+  opacity: 0;
+  transition: opacity var(--duration-short) var(--spring-effect-fast);
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+.scoreBtn:hover::before {
+  opacity: var(--color-state-layer-opacity);
+}
+
+.scoreBtn:active {
+  transform: scale(0.92);
 }
 
 .scoreBtn:hover {
@@ -288,22 +304,18 @@
   color: var(--color-score);
 }
 
-/* Active score: morphs from rounded-rect to circle */
+/* Shape morph to circle when active */
 .scoreBtn.activeScore {
-  border-radius: var(--md-shape-full);
   background-color: var(--color-score);
   border-color: var(--color-score);
   color: white;
+  border-radius: 50%;
 }
-
-/* --- Submit button --- */
 
 .submitBtn {
   margin-top: var(--space-lg);
   width: 100%;
 }
-
-/* --- Participants --- */
 
 .participantsHeader {
   margin-bottom: var(--space-md);
@@ -320,15 +332,14 @@
   align-items: center;
   justify-content: space-between;
   padding: var(--space-sm);
-  border-radius: var(--md-shape-sm);
+  background-color: var(--color-bg);
+  border-radius: var(--shape-sm);
+  transition: background-color var(--duration-short) var(--spring-effect-fast);
 }
 
 .participantName {
   font-weight: 500;
-  color: var(--md-color-on-surface);
 }
-
-/* --- Results --- */
 
 .resultsSection {
   position: sticky;
@@ -344,7 +355,7 @@
 }
 
 .resultsHeader h2 {
-  font-size: var(--md-type-title);
+  font-size: 1.25rem;
 }
 
 .exportButtons {
@@ -352,11 +363,11 @@
   gap: var(--space-sm);
   margin-top: var(--space-lg);
   padding-top: var(--space-lg);
-  border-top: var(--divider);
+  border-top: 1px solid var(--color-border);
   flex-wrap: wrap;
 }
 
-/* --- Modal: M3 dialog with spring entrance --- */
+/* --- Modal: M3 spring dialog entrance --- */
 
 .modalOverlay {
   position: fixed;
@@ -364,23 +375,20 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.32);
+  background-color: rgba(0, 0, 0, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  animation: fadeIn 200ms var(--md-motion-effect-fast) both;
+  animation: fadeIn var(--duration-short) ease both;
+  backdrop-filter: blur(4px);
 }
 
 .modal {
   width: 100%;
   max-width: 400px;
   margin: var(--space-md);
-  background: var(--md-color-surface-container-high);
-  box-shadow: var(--md-elevation-3);
-  border-radius: var(--md-shape-xl);
-  padding: var(--space-xl);
-  animation: dialogEnter var(--md-motion-duration-long) var(--md-motion-spatial-normal) both;
+  animation: dialogEnter var(--duration-long) var(--spring-spatial) both;
 }
 
 .modal h2 {
@@ -388,7 +396,7 @@
 }
 
 .modalDesc {
-  color: var(--md-color-on-surface-variant);
+  color: var(--color-text-muted);
   margin-bottom: var(--space-lg);
 }
 
@@ -397,8 +405,6 @@
   flex-direction: column;
   gap: var(--space-md);
 }
-
-/* --- Name editing --- */
 
 .nameEdit {
   display: flex;
@@ -417,18 +423,21 @@
   cursor: pointer;
   padding: var(--space-xs);
   opacity: 0.6;
-  transition: opacity var(--md-motion-duration-short) var(--md-motion-effect-fast);
+  transition:
+    opacity var(--duration-short) var(--spring-effect-fast),
+    transform var(--duration-medium) var(--spring-spatial);
 }
 
 .nameEditBtn:hover {
   opacity: 1;
+  transform: scale(1.1);
 }
 
-/* ============================================================
-   RESPONSIVE
-   ============================================================ */
+.nameEditBtn:active {
+  transform: scale(0.9);
+}
 
-/* Tablet */
+/* Tablet breakpoint */
 @media (max-width: 768px) {
   .container {
     padding: var(--space-md);
@@ -440,7 +449,7 @@
   }
 
   .title {
-    font-size: var(--md-type-title);
+    font-size: 1.375rem;
   }
 
   .resultsSection {
@@ -463,7 +472,7 @@
   }
 }
 
-/* Mobile */
+/* Mobile breakpoint */
 @media (max-width: 480px) {
   .container {
     padding: var(--space-sm) var(--space-md);
@@ -473,6 +482,10 @@
     flex-direction: column;
     align-items: flex-start;
     gap: var(--space-sm);
+  }
+
+  .title {
+    font-size: 1.25rem;
   }
 
   .option {

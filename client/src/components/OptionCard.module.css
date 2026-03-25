@@ -1,42 +1,78 @@
+/* M3 Expressive OptionCard — shape morphing, state layers, spring motion */
+
 .card {
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--space-md);
   padding: var(--space-md);
   background-color: var(--color-bg-elevated);
   border: 2px solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--shape-md);
   cursor: pointer;
-  transition: all 150ms ease;
   min-height: 44px;
   flex-wrap: wrap;
+  overflow: hidden;
+  transition:
+    border-color var(--duration-short) var(--spring-effect-fast),
+    border-radius var(--duration-long) var(--spring-spatial),
+    background-color var(--duration-short) var(--spring-effect-fast),
+    transform var(--duration-medium) var(--spring-spatial);
+}
+
+/* State layer */
+.card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--color-primary);
+  opacity: 0;
+  transition: opacity var(--duration-short) var(--spring-effect-fast);
+  pointer-events: none;
+}
+
+.card:hover::before {
+  opacity: var(--color-state-layer-opacity);
+}
+
+.card:active {
+  transform: scale(0.98);
+}
+
+.card:active::before {
+  opacity: calc(var(--color-state-layer-opacity) * 2);
 }
 
 .card:hover {
   border-color: var(--color-primary);
-  background-color: var(--color-bg-hover);
 }
 
+/* Shape morphing: md → xl on selection */
 .selected {
   border-color: var(--color-primary);
-  background-color: rgba(99, 102, 241, 0.1);
+  border-radius: var(--shape-xl);
+  background-color: color-mix(in srgb, var(--color-primary) 10%, transparent);
 }
 
 .checkbox {
   width: 24px;
   height: 24px;
   border: 2px solid var(--color-border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--shape-xs);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  transition: all 150ms ease;
+  transition:
+    background-color var(--duration-short) var(--spring-effect-fast),
+    border-color var(--duration-short) var(--spring-effect-fast),
+    transform var(--duration-medium) var(--spring-spatial);
 }
 
 .checkbox.checked {
   background-color: var(--color-primary);
   border-color: var(--color-primary);
+  animation: checkPop var(--duration-medium) var(--spring-spatial);
 }
 
 .checkmark {
@@ -56,6 +92,7 @@
   font-size: 0.875rem;
   font-weight: 700;
   flex-shrink: 0;
+  transition: transform var(--duration-medium) var(--spring-spatial);
 }
 
 .rankBadge {
@@ -91,19 +128,46 @@
   flex-wrap: wrap;
 }
 
+/* Score button: shape morphing (sm → circle on active) + state layer */
 .scoreButton {
+  position: relative;
+  overflow: hidden;
   min-width: 44px;
   min-height: 44px;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--shape-sm);
   background-color: transparent;
   color: var(--color-text-muted);
   font-weight: 600;
   cursor: pointer;
-  transition: all 150ms ease;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition:
+    border-color var(--duration-short) var(--spring-effect-fast),
+    border-radius var(--duration-long) var(--spring-spatial),
+    background-color var(--duration-short) var(--spring-effect-fast),
+    color var(--duration-short) var(--spring-effect-fast),
+    transform var(--duration-medium) var(--spring-spatial);
+}
+
+.scoreButton::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--color-score);
+  opacity: 0;
+  transition: opacity var(--duration-short) var(--spring-effect-fast);
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+.scoreButton:hover::before {
+  opacity: var(--color-state-layer-opacity);
+}
+
+.scoreButton:active {
+  transform: scale(0.92);
 }
 
 .scoreButton:hover {
@@ -111,10 +175,12 @@
   color: var(--color-score);
 }
 
+/* Shape morph to circle when active */
 .scoreButton.selectedScore {
   background-color: var(--color-score);
   border-color: var(--color-score);
   color: white;
+  border-radius: 50%;
 }
 
 @media (max-width: 480px) {
