@@ -1,8 +1,10 @@
+/* SessionPage — M3 Expressive shape morphing on options + Zero-UI layout. */
+
 .container {
   max-width: 1200px;
   margin: 0 auto;
   padding: var(--space-lg);
-  animation: fadeIn 300ms ease;
+  animation: fadeUp var(--md-motion-duration-medium) var(--md-motion-effect-fast);
   min-width: 0;
   overflow-x: hidden;
 }
@@ -12,7 +14,7 @@
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  color: var(--color-text-muted);
+  color: var(--md-color-on-surface-variant);
 }
 
 .errorState {
@@ -29,7 +31,13 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-md);
+  background: var(--md-color-surface-container-low);
+  box-shadow: var(--md-elevation-1);
+  border-radius: var(--md-shape-lg);
+  padding: var(--space-xl);
 }
+
+/* --- Header --- */
 
 .header {
   display: flex;
@@ -37,7 +45,7 @@
   gap: var(--space-lg);
   margin-bottom: var(--space-xl);
   padding-bottom: var(--space-lg);
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: var(--divider);
   flex-wrap: wrap;
 }
 
@@ -46,7 +54,7 @@
 }
 
 .title {
-  font-size: 1.75rem;
+  font-size: var(--md-type-headline);
   margin-bottom: var(--space-xs);
   overflow-wrap: break-word;
   word-break: break-word;
@@ -61,39 +69,46 @@
 
 .sessionId {
   font-family: var(--font-mono);
-  font-size: 0.875rem;
-  color: var(--color-text-muted);
+  font-size: var(--md-type-body-sm);
+  color: var(--md-color-on-surface-variant);
   overflow-wrap: break-word;
   word-break: break-all;
 }
 
 .shareBtn {
   padding: var(--space-xs) var(--space-sm);
-  background-color: var(--color-bg-hover);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  color: var(--color-text-muted);
-  font-size: 0.75rem;
+  background-color: transparent;
+  border: 1px solid var(--md-color-outline-variant);
+  border-radius: var(--md-shape-full);
+  color: var(--md-color-on-surface-variant);
+  font-size: var(--md-type-label);
   cursor: pointer;
-  transition: all 150ms ease;
   min-height: 36px;
   min-width: 44px;
+  transition:
+    background var(--md-motion-duration-short) var(--md-motion-effect-fast),
+    color var(--md-motion-duration-short) var(--md-motion-effect-fast),
+    border-color var(--md-motion-duration-short) var(--md-motion-effect-fast);
 }
 
 .shareBtn:hover {
-  background-color: var(--color-primary);
-  border-color: var(--color-primary);
-  color: white;
+  background-color: var(--md-color-primary);
+  border-color: var(--md-color-primary);
+  color: var(--md-color-on-primary);
 }
+
+/* --- Error banner --- */
 
 .error {
   padding: var(--space-md);
-  background-color: rgba(239, 68, 68, 0.1);
-  border: 1px solid var(--color-danger);
-  border-radius: var(--radius-md);
-  color: var(--color-danger);
+  background-color: var(--md-color-error-container);
+  border: 1px solid var(--md-color-error);
+  border-radius: var(--md-shape-md);
+  color: var(--md-color-on-error-container);
   margin-bottom: var(--space-lg);
 }
+
+/* --- Content grid --- */
 
 .content {
   display: grid;
@@ -121,9 +136,15 @@
 }
 
 .instruction {
-  color: var(--color-text-muted);
+  color: var(--md-color-on-surface-variant);
   margin-bottom: var(--space-lg);
+  font-size: var(--md-type-body-sm);
 }
+
+/* --- Option Cards: M3 Shape Morphing ---
+   Default: md radius (12px)
+   Selected: morphs to xl radius (28px) with spring easing
+   Uses primary-container for selected state. */
 
 .options {
   display: flex;
@@ -136,50 +157,86 @@
   align-items: center;
   gap: var(--space-md);
   padding: var(--space-md);
-  background-color: var(--color-bg);
-  border: 2px solid var(--color-border);
-  border-radius: var(--radius-md);
+  background-color: var(--md-color-surface-container);
+  border: 2px solid var(--md-color-outline-variant);
+  border-radius: var(--md-shape-md);
   cursor: pointer;
-  transition: all 150ms ease;
+  position: relative;
+  overflow: hidden;
+  /* M3 spring transition for shape morph */
+  transition:
+    border-radius var(--md-motion-duration-medium) var(--md-motion-spatial-fast),
+    background-color var(--md-motion-duration-short) var(--md-motion-effect-fast),
+    border-color var(--md-motion-duration-short) var(--md-motion-effect-fast),
+    box-shadow var(--md-motion-duration-short) var(--md-motion-effect-fast);
+}
+
+/* M3 State layer */
+.option::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--md-color-on-surface);
+  opacity: 0;
+  transition: opacity var(--md-motion-duration-short) var(--md-motion-effect-fast);
+  pointer-events: none;
+}
+
+.option:hover::before {
+  opacity: 0.08;
 }
 
 .option:hover {
-  border-color: var(--color-primary);
+  border-color: var(--md-color-primary);
 }
 
+/* SELECTED: shape morphs from md (12px) to xl (28px) */
 .option.selected {
-  border-color: var(--color-primary);
-  background-color: rgba(99, 102, 241, 0.1);
+  border-radius: var(--md-shape-xl);
+  border-color: var(--md-color-primary);
+  background-color: var(--md-color-primary-container);
+  box-shadow: var(--md-elevation-1);
 }
+
+/* --- Checkbox --- */
 
 .checkbox {
   width: 24px;
   height: 24px;
-  border: 2px solid var(--color-border);
-  border-radius: var(--radius-sm);
+  border: 2px solid var(--md-color-outline);
+  border-radius: var(--md-shape-xs);
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: bold;
   flex-shrink: 0;
+  transition:
+    background var(--md-motion-duration-short) var(--md-motion-effect-fast),
+    border-color var(--md-motion-duration-short) var(--md-motion-effect-fast),
+    border-radius var(--md-motion-duration-medium) var(--md-motion-spatial-fast);
 }
 
 .checkbox.checked {
-  background-color: var(--color-primary);
-  border-color: var(--color-primary);
-  color: white;
+  background-color: var(--md-color-primary);
+  border-color: var(--md-color-primary);
+  color: var(--md-color-on-primary);
+  /* Checkbox morphs to circle when checked */
+  border-radius: var(--md-shape-full);
 }
+
+/* --- Rank & Score numbers --- */
 
 .rankNumber,
 .scoreNumber {
   width: 32px;
   height: 32px;
-  border-radius: 50%;
+  border-radius: var(--md-shape-full);
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 700;
-  font-size: 0.875rem;
+  font-size: var(--md-type-body-sm);
   flex-shrink: 0;
 }
 
@@ -196,7 +253,10 @@
 .optionName {
   flex: 1;
   font-weight: 500;
+  color: var(--md-color-on-surface);
 }
+
+/* --- Score buttons: M3 shape morph to circle when active --- */
 
 .scoreButtons {
   display: flex;
@@ -207,16 +267,20 @@
 .scoreBtn {
   min-width: 44px;
   min-height: 44px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
+  border: 1px solid var(--md-color-outline-variant);
+  border-radius: var(--md-shape-md);
   background: transparent;
-  color: var(--color-text-muted);
+  color: var(--md-color-on-surface-variant);
   font-weight: 600;
   cursor: pointer;
-  transition: all 150ms ease;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition:
+    border-radius var(--md-motion-duration-medium) var(--md-motion-spatial-fast),
+    background var(--md-motion-duration-short) var(--md-motion-effect-fast),
+    border-color var(--md-motion-duration-short) var(--md-motion-effect-fast),
+    color var(--md-motion-duration-short) var(--md-motion-effect-fast);
 }
 
 .scoreBtn:hover {
@@ -224,16 +288,22 @@
   color: var(--color-score);
 }
 
+/* Active score: morphs from rounded-rect to circle */
 .scoreBtn.activeScore {
+  border-radius: var(--md-shape-full);
   background-color: var(--color-score);
   border-color: var(--color-score);
   color: white;
 }
 
+/* --- Submit button --- */
+
 .submitBtn {
   margin-top: var(--space-lg);
   width: 100%;
 }
+
+/* --- Participants --- */
 
 .participantsHeader {
   margin-bottom: var(--space-md);
@@ -250,13 +320,15 @@
   align-items: center;
   justify-content: space-between;
   padding: var(--space-sm);
-  background-color: var(--color-bg);
-  border-radius: var(--radius-md);
+  border-radius: var(--md-shape-sm);
 }
 
 .participantName {
   font-weight: 500;
+  color: var(--md-color-on-surface);
 }
+
+/* --- Results --- */
 
 .resultsSection {
   position: sticky;
@@ -272,7 +344,7 @@
 }
 
 .resultsHeader h2 {
-  font-size: 1.25rem;
+  font-size: var(--md-type-title);
 }
 
 .exportButtons {
@@ -280,9 +352,11 @@
   gap: var(--space-sm);
   margin-top: var(--space-lg);
   padding-top: var(--space-lg);
-  border-top: 1px solid var(--color-border);
+  border-top: var(--divider);
   flex-wrap: wrap;
 }
+
+/* --- Modal: M3 dialog with spring entrance --- */
 
 .modalOverlay {
   position: fixed;
@@ -290,17 +364,23 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.8);
+  background-color: rgba(0, 0, 0, 0.32);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
+  animation: fadeIn 200ms var(--md-motion-effect-fast) both;
 }
 
 .modal {
   width: 100%;
   max-width: 400px;
   margin: var(--space-md);
+  background: var(--md-color-surface-container-high);
+  box-shadow: var(--md-elevation-3);
+  border-radius: var(--md-shape-xl);
+  padding: var(--space-xl);
+  animation: dialogEnter var(--md-motion-duration-long) var(--md-motion-spatial-normal) both;
 }
 
 .modal h2 {
@@ -308,7 +388,7 @@
 }
 
 .modalDesc {
-  color: var(--color-text-muted);
+  color: var(--md-color-on-surface-variant);
   margin-bottom: var(--space-lg);
 }
 
@@ -317,6 +397,8 @@
   flex-direction: column;
   gap: var(--space-md);
 }
+
+/* --- Name editing --- */
 
 .nameEdit {
   display: flex;
@@ -335,14 +417,18 @@
   cursor: pointer;
   padding: var(--space-xs);
   opacity: 0.6;
-  transition: opacity 150ms ease;
+  transition: opacity var(--md-motion-duration-short) var(--md-motion-effect-fast);
 }
 
 .nameEditBtn:hover {
   opacity: 1;
 }
 
-/* Tablet breakpoint */
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+
+/* Tablet */
 @media (max-width: 768px) {
   .container {
     padding: var(--space-md);
@@ -354,7 +440,7 @@
   }
 
   .title {
-    font-size: 1.375rem;
+    font-size: var(--md-type-title);
   }
 
   .resultsSection {
@@ -377,7 +463,7 @@
   }
 }
 
-/* Mobile breakpoint */
+/* Mobile */
 @media (max-width: 480px) {
   .container {
     padding: var(--space-sm) var(--space-md);
@@ -387,10 +473,6 @@
     flex-direction: column;
     align-items: flex-start;
     gap: var(--space-sm);
-  }
-
-  .title {
-    font-size: 1.25rem;
   }
 
   .option {

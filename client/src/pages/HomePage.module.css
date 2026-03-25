@@ -1,8 +1,10 @@
+/* HomePage — Zero-UI minimal layout, M3 Expressive entrance animations. */
+
 .container {
   max-width: 800px;
   margin: 0 auto;
   padding: var(--space-2xl) var(--space-md);
-  animation: fadeIn 300ms ease;
+  animation: fadeUp var(--md-motion-duration-medium) var(--md-motion-effect-fast);
   min-width: 0;
 }
 
@@ -14,7 +16,7 @@
 .title {
   font-size: 3rem;
   font-weight: 700;
-  background: linear-gradient(135deg, var(--color-primary), var(--color-ranked));
+  background: linear-gradient(135deg, var(--md-color-primary), var(--color-ranked));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -23,16 +25,16 @@
 }
 
 .subtitle {
-  color: var(--color-text-muted);
-  font-size: 1.125rem;
+  color: var(--md-color-on-surface-variant);
+  font-size: var(--md-type-title);
 }
 
 .error {
   padding: var(--space-md);
-  background-color: rgba(239, 68, 68, 0.1);
-  border: 1px solid var(--color-danger);
-  border-radius: var(--radius-md);
-  color: var(--color-danger);
+  background-color: var(--md-color-error-container);
+  border: 1px solid var(--md-color-error);
+  border-radius: var(--md-shape-md);
+  color: var(--md-color-on-error-container);
   margin-bottom: var(--space-lg);
   text-align: center;
 }
@@ -45,6 +47,19 @@
 
 .card {
   text-align: center;
+  /* Override Card's Zero-UI transparent — these need visible containers */
+  background: var(--md-color-surface-container-low);
+  box-shadow: var(--md-elevation-1);
+  border-radius: var(--md-shape-lg);
+  padding: var(--space-xl) var(--space-lg);
+  transition:
+    box-shadow var(--md-motion-duration-medium) var(--md-motion-effect-fast),
+    transform var(--md-motion-duration-medium) var(--md-motion-spatial-normal);
+}
+
+.card:hover {
+  box-shadow: var(--md-elevation-2);
+  transform: translateY(-2px);
 }
 
 .card h2 {
@@ -52,7 +67,7 @@
 }
 
 .cardDesc {
-  color: var(--color-text-muted);
+  color: var(--md-color-on-surface-variant);
   margin-bottom: var(--space-lg);
 }
 
@@ -65,6 +80,10 @@
 .createCard {
   max-width: 500px;
   margin: 0 auto;
+  background: var(--md-color-surface-container-low);
+  box-shadow: var(--md-elevation-1);
+  border-radius: var(--md-shape-lg);
+  padding: var(--space-xl) var(--space-lg);
 }
 
 .createCard h2 {
@@ -78,9 +97,11 @@
 }
 
 .label {
-  font-size: 0.875rem;
-  color: var(--color-text-muted);
+  font-size: var(--md-type-label);
+  color: var(--md-color-on-surface-variant);
   font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
   display: block;
   margin-bottom: var(--space-xs);
 }

@@ -1,3 +1,5 @@
+/* Results chart: clean horizontal bars with M3 spring transitions. */
+
 .container {
   display: flex;
   flex-direction: column;
@@ -23,37 +25,38 @@
 
 .name {
   font-weight: 500;
-  font-size: 0.9375rem;
+  font-size: var(--md-type-body-sm);
+  color: var(--md-color-on-surface);
 }
 
 .winnerBadge {
-  font-size: 0.6875rem;
-  padding: 2px 6px;
+  font-size: var(--md-type-label);
+  padding: 2px 8px;
   background-color: var(--color-success);
   color: white;
-  border-radius: var(--radius-sm);
-  text-transform: uppercase;
+  border-radius: var(--md-shape-full);
   font-weight: 600;
 }
 
 .barContainer {
   height: 8px;
-  background-color: var(--color-bg-hover);
-  border-radius: var(--radius-sm);
+  background-color: var(--md-color-surface-container);
+  border-radius: var(--md-shape-full);
   overflow: hidden;
 }
 
 .barFill {
   height: 100%;
-  border-radius: var(--radius-sm);
-  transition: width 300ms ease-out;
+  border-radius: var(--md-shape-full);
+  /* M3 spring easing for live result updates */
+  transition: width var(--md-motion-duration-medium) var(--md-motion-spatial-normal);
 }
 
 .stats {
   display: flex;
   justify-content: space-between;
-  font-size: 0.75rem;
-  color: var(--color-text-muted);
+  font-size: var(--md-type-label);
+  color: var(--md-color-on-surface-variant);
 }
 
 .count {
@@ -67,9 +70,9 @@
 .roundInfo {
   margin-top: var(--space-md);
   padding: var(--space-md);
-  background-color: var(--color-bg-hover);
-  border-radius: var(--radius-md);
-  font-size: 0.875rem;
+  background-color: var(--md-color-surface-container);
+  border-radius: var(--md-shape-md);
+  font-size: var(--md-type-body-sm);
 }
 
 .roundInfo h4 {
@@ -78,5 +81,5 @@
 }
 
 .roundInfo p {
-  color: var(--color-text-muted);
+  color: var(--md-color-on-surface-variant);
 }

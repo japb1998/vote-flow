@@ -1,3 +1,5 @@
+/* Accordion info panels — Zero-UI clean borders, M3 surface containers. */
+
 .container {
   margin-top: var(--space-md);
 }
@@ -8,62 +10,66 @@
   justify-content: space-between;
   width: 100%;
   padding: var(--space-sm) var(--space-md);
-  background-color: var(--color-bg-hover);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  color: var(--color-text-muted);
-  font-size: 0.875rem;
+  background-color: transparent;
+  border: 1px solid var(--md-color-outline-variant);
+  border-radius: var(--md-shape-sm);
+  color: var(--md-color-on-surface-variant);
+  font-size: var(--md-type-body-sm);
   cursor: pointer;
-  transition: all 150ms ease;
+  transition:
+    background var(--md-motion-duration-short) var(--md-motion-effect-fast),
+    color var(--md-motion-duration-short) var(--md-motion-effect-fast);
 }
 
 .toggleBtn:hover {
-  background-color: var(--color-bg);
-  color: var(--color-text);
+  background-color: var(--md-color-surface-container);
+  color: var(--md-color-on-surface);
 }
 
 .toggleIcon {
-  font-size: 0.75rem;
+  font-size: var(--md-type-label);
 }
 
 .infoCard {
   margin-top: var(--space-sm);
   padding: var(--space-md);
+  background: var(--md-color-surface-container-low);
+  border-radius: var(--md-shape-md);
 }
 
 .infoTitle {
-  font-size: 1rem;
+  font-size: var(--md-type-body);
   margin-bottom: var(--space-xs);
-  color: var(--color-primary);
+  color: var(--md-color-primary);
 }
 
 .infoDesc {
-  font-size: 0.875rem;
-  color: var(--color-text);
+  font-size: var(--md-type-body-sm);
+  color: var(--md-color-on-surface);
   margin-bottom: var(--space-sm);
 }
 
 .infoExample {
-  font-size: 0.8125rem;
-  color: var(--color-text-muted);
+  font-size: var(--md-type-body-sm);
+  color: var(--md-color-on-surface-variant);
 }
 
 .fullContainer {
   margin-top: var(--space-xl);
   padding-top: var(--space-lg);
-  border-top: 1px solid var(--color-border);
+  border-top: var(--divider);
 }
 
 .sectionTitle {
-  font-size: 1.125rem;
+  font-size: var(--md-type-title);
   margin-bottom: var(--space-md);
-  color: var(--color-text);
+  color: var(--md-color-on-surface);
 }
 
 .methodItem {
   margin-bottom: var(--space-sm);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  border: 1px solid var(--md-color-outline-variant);
+  border-radius: var(--md-shape-sm);
   overflow: hidden;
 }
 
@@ -73,24 +79,24 @@
   justify-content: space-between;
   width: 100%;
   padding: var(--space-md);
-  background-color: var(--color-bg-elevated);
+  background-color: var(--md-color-surface-container-low);
   border: none;
-  color: var(--color-text);
-  font-size: 0.9375rem;
+  color: var(--md-color-on-surface);
+  font-size: var(--md-type-body-sm);
   font-weight: 500;
   cursor: pointer;
-  transition: background-color 150ms ease;
+  transition: background-color var(--md-motion-duration-short) var(--md-motion-effect-fast);
 }
 
 .methodHeader:hover {
-  background-color: var(--color-bg-hover);
+  background-color: var(--md-color-surface-container);
 }
 
 .methodContent {
   padding: var(--space-md);
-  background-color: var(--color-bg);
-  font-size: 0.875rem;
-  color: var(--color-text-muted);
+  background-color: var(--md-color-surface);
+  font-size: var(--md-type-body-sm);
+  color: var(--md-color-on-surface-variant);
   line-height: 1.6;
 }
 
