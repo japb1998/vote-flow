@@ -4,6 +4,9 @@
 
 Real-time collaborative voting application with multiple voting mechanisms.
 
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Support%20VoteFlow-FFDD00?style=flat&logo=buy-me-a-coffee&logoColor=black)](https://www.buymeacoffee.com/voteflow)
+[![GitHub Sponsors](https://img.shields.io/badge/GitHub%20Sponsors-Sponsor%20VoteFlow-EA4AAA?style=flat&logo=github-sponsors)](https://github.com/sponsors/voteflow)
+
 ## Features
 
 - **Real-time voting** - Votes update instantly across all connected clients
