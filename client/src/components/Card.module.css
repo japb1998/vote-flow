@@ -1,12 +1,23 @@
+/* M3 Expressive Card — spring elevation, surface container */
+
 .card {
   background-color: var(--color-bg-elevated);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--shape-md);
   padding: var(--space-lg);
-  transition: box-shadow 200ms ease, transform 200ms ease;
+  transition:
+    box-shadow var(--duration-medium) var(--spring-effect),
+    transform var(--duration-medium) var(--spring-spatial),
+    border-color var(--duration-short) var(--spring-effect-fast);
+  animation: fadeUp var(--duration-medium) var(--spring-effect) both;
 }
 
 .hoverable:hover {
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--elevation-2);
   transform: translateY(-2px);
+  border-color: var(--color-primary);
+}
+
+.hoverable:active {
+  transform: translateY(0) scale(0.99);
 }

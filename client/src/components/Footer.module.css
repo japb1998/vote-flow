@@ -1,3 +1,5 @@
+/* M3 Expressive Footer */
+
 .footer {
   display: flex;
   justify-content: center;
@@ -7,18 +9,24 @@
 }
 
 .link {
+  position: relative;
+  overflow: hidden;
   display: inline-flex;
   align-items: center;
   gap: var(--space-sm);
   padding: var(--space-sm) var(--space-md);
-  border-radius: var(--radius-md);
+  border-radius: var(--shape-full);
   background-color: var(--color-bg-elevated);
   border: 1px solid var(--color-border);
   color: var(--color-text-muted);
   font-size: 0.875rem;
   font-family: var(--font-sans);
   text-decoration: none;
-  transition: border-color 200ms ease, color 200ms ease, background-color 200ms ease;
+  transition:
+    border-color var(--duration-short) var(--spring-effect-fast),
+    color var(--duration-short) var(--spring-effect-fast),
+    background-color var(--duration-short) var(--spring-effect-fast),
+    transform var(--duration-medium) var(--spring-spatial);
 }
 
 .link:hover {
@@ -26,6 +34,10 @@
   border-color: rgba(255, 221, 0, 0.4);
   color: #FFDD00;
   text-decoration: none;
+}
+
+.link:active {
+  transform: scale(0.97);
 }
 
 .icon {

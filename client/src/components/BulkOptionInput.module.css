@@ -1,4 +1,4 @@
-/* BulkOptionInput — M3 Expressive + Zero-UI */
+/* BulkOptionInput — M3 Expressive */
 
 .container {
   display: flex;
@@ -11,8 +11,8 @@
 .tabs {
   display: flex;
   gap: 2px;
-  background: var(--md-color-surface-container);
-  border-radius: var(--md-shape-full);
+  background: var(--color-surface-container);
+  border-radius: var(--shape-full);
   padding: 2px;
   overflow-x: auto;
 }
@@ -21,55 +21,60 @@
   flex: 1;
   padding: var(--space-xs) var(--space-md);
   border: none;
-  border-radius: var(--md-shape-full);
+  border-radius: var(--shape-full);
   background: transparent;
-  color: var(--md-color-on-surface-variant);
-  font-size: var(--md-type-label);
+  color: var(--color-text-muted);
+  font-size: 0.8125rem;
   font-weight: 500;
   font-family: var(--font-sans);
   cursor: pointer;
   white-space: nowrap;
   min-height: 32px;
   transition:
-    background var(--md-motion-duration-short) var(--md-motion-effect-fast),
-    color var(--md-motion-duration-short) var(--md-motion-effect-fast);
+    background var(--duration-short) var(--spring-effect-fast),
+    color var(--duration-short) var(--spring-effect-fast),
+    transform var(--duration-medium) var(--spring-spatial);
 }
 
 .tab:hover {
-  background: var(--md-color-surface-container-high);
-  color: var(--md-color-on-surface);
+  background: var(--color-surface-container-high);
+  color: var(--color-text);
+}
+
+.tab:active {
+  transform: scale(0.95);
 }
 
 .tabActive {
-  background: var(--md-color-primary);
-  color: var(--md-color-on-primary);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
 }
 
 .tabActive:hover {
-  background: var(--md-color-primary);
-  color: var(--md-color-on-primary);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
 }
 
 /* --- Textarea with drop zone --- */
 
 .inputArea {
   position: relative;
-  border: 1px solid var(--md-color-outline);
-  border-radius: var(--md-shape-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--shape-sm);
   transition:
-    border-color var(--md-motion-duration-short) var(--md-motion-effect-fast),
-    box-shadow var(--md-motion-duration-short) var(--md-motion-effect-fast);
+    border-color var(--duration-short) var(--spring-effect-fast),
+    box-shadow var(--duration-medium) var(--spring-effect);
 }
 
 .inputArea:focus-within {
-  border-color: var(--md-color-primary);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--md-color-primary) 15%, transparent);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 15%, transparent);
 }
 
 .dragOver {
-  border-color: var(--md-color-primary);
+  border-color: var(--color-primary);
   border-style: dashed;
-  background: color-mix(in srgb, var(--md-color-primary) 5%, transparent);
+  background: color-mix(in srgb, var(--color-primary) 5%, transparent);
 }
 
 .textarea {
@@ -81,16 +86,16 @@
   border: none;
   border-radius: inherit;
   background: transparent;
-  color: var(--md-color-on-surface);
+  color: var(--color-text);
   font-family: var(--font-mono);
-  font-size: var(--md-type-body-sm);
+  font-size: 0.875rem;
   line-height: 1.6;
   resize: vertical;
   outline: none;
 }
 
 .textarea::placeholder {
-  color: var(--md-color-on-surface-variant);
+  color: var(--color-text-muted);
   font-family: var(--font-mono);
   opacity: 0.6;
 }
@@ -101,11 +106,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: color-mix(in srgb, var(--md-color-primary) 8%, transparent);
+  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
   border-radius: inherit;
-  color: var(--md-color-primary);
+  color: var(--color-primary);
   font-weight: 600;
-  font-size: var(--md-type-body-sm);
+  font-size: 0.875rem;
   pointer-events: none;
 }
 
@@ -123,24 +128,24 @@
 }
 
 .hint {
-  font-size: var(--md-type-label);
-  color: var(--md-color-on-surface-variant);
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
   flex: 1;
 }
 
 /* --- Error --- */
 
 .error {
-  font-size: var(--md-type-body-sm);
-  color: var(--md-color-error);
+  font-size: 0.875rem;
+  color: var(--color-danger);
   padding: var(--space-xs) 0;
 }
 
 /* --- Live preview --- */
 
 .preview {
-  border: 1px solid var(--md-color-outline-variant);
-  border-radius: var(--md-shape-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--shape-sm);
   overflow: hidden;
   max-height: 200px;
   overflow-y: auto;
@@ -148,10 +153,10 @@
 
 .previewLabel {
   padding: var(--space-xs) var(--space-md);
-  background: var(--md-color-surface-container);
-  font-size: var(--md-type-label);
+  background: var(--color-surface-container);
+  font-size: 0.6875rem;
   font-weight: 500;
-  color: var(--md-color-on-surface-variant);
+  color: var(--color-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   position: sticky;
@@ -168,7 +173,7 @@
   align-items: baseline;
   gap: var(--space-sm);
   padding: var(--space-xs) var(--space-md);
-  border-top: 1px solid var(--md-color-surface-container);
+  border-top: 1px solid var(--color-surface-container);
 }
 
 .previewItem:first-child {
@@ -176,21 +181,21 @@
 }
 
 .previewIndex {
-  font-size: var(--md-type-label);
-  color: var(--md-color-on-surface-variant);
+  font-size: 0.6875rem;
+  color: var(--color-text-muted);
   font-family: var(--font-mono);
   min-width: 20px;
 }
 
 .previewName {
-  font-size: var(--md-type-body-sm);
+  font-size: 0.875rem;
   font-weight: 500;
-  color: var(--md-color-on-surface);
+  color: var(--color-text);
 }
 
 .previewDesc {
-  font-size: var(--md-type-label);
-  color: var(--md-color-on-surface-variant);
+  font-size: 0.6875rem;
+  color: var(--color-text-muted);
   margin-left: auto;
 }
 
@@ -201,8 +206,8 @@
   flex-direction: column;
   gap: var(--space-xs);
   padding: var(--space-sm) var(--space-md);
-  background: var(--md-color-surface-container);
-  border-radius: var(--md-shape-sm);
+  background: var(--color-surface-container);
+  border-radius: var(--shape-sm);
 }
 
 .metaItem {
@@ -212,17 +217,17 @@
 }
 
 .metaLabel {
-  font-size: var(--md-type-label);
+  font-size: 0.6875rem;
   font-weight: 600;
-  color: var(--md-color-on-surface-variant);
+  color: var(--color-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   min-width: 52px;
 }
 
 .metaValue {
-  font-size: var(--md-type-body-sm);
-  color: var(--md-color-on-surface);
+  font-size: 0.875rem;
+  color: var(--color-text);
   font-weight: 500;
 }
 
@@ -236,7 +241,6 @@
 
   .tab {
     padding: var(--space-xs) var(--space-sm);
-    font-size: var(--md-type-label);
   }
 
   .actions {

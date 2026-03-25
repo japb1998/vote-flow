@@ -1,0 +1,31 @@
+/* Theme toggle pill button */
+
+.toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  background: var(--color-surface-container);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-short) var(--spring-effect-fast),
+    border-color var(--duration-short) var(--spring-effect-fast),
+    transform var(--duration-medium) var(--spring-spatial);
+}
+
+.toggle:hover {
+  background: var(--color-surface-container-high);
+  border-color: var(--color-primary);
+}
+
+.toggle:active {
+  transform: scale(0.9) rotate(-15deg);
+}
+
+.icon {
+  font-size: 1.125rem;
+  line-height: 1;
+}

@@ -1,8 +1,10 @@
+/* HomePage — M3 Expressive layout with responsive matching widths */
+
 .container {
   max-width: 800px;
   margin: 0 auto;
   padding: var(--space-2xl) var(--space-md);
-  animation: fadeIn 300ms ease;
+  animation: fadeUp var(--duration-medium) var(--spring-effect) both;
   min-width: 0;
 }
 
@@ -31,7 +33,7 @@
   padding: var(--space-md);
   background-color: rgba(239, 68, 68, 0.1);
   border: 1px solid var(--color-danger);
-  border-radius: var(--radius-md);
+  border-radius: var(--shape-sm);
   color: var(--color-danger);
   margin-bottom: var(--space-lg);
   text-align: center;
@@ -61,6 +63,8 @@
   flex-direction: column;
   gap: var(--space-sm);
 }
+
+/* --- Create Session Form --- */
 
 .createCard {
   max-width: 600px;
@@ -99,71 +103,79 @@
   flex-wrap: wrap;
 }
 
+/* Mode switcher: pill segmented control */
 .modeSwitcher {
   display: flex;
   gap: 2px;
-  background: var(--md-color-surface-container);
-  border-radius: var(--md-shape-full);
+  background: var(--color-surface-container);
+  border-radius: var(--shape-full);
   padding: 2px;
 }
 
 .modeBtn {
   padding: var(--space-xs) var(--space-md);
   border: none;
-  border-radius: var(--md-shape-full);
+  border-radius: var(--shape-full);
   background: transparent;
-  color: var(--md-color-on-surface-variant);
-  font-size: var(--md-type-label);
+  color: var(--color-text-muted);
+  font-size: 0.8125rem;
   font-weight: 500;
   font-family: var(--font-sans);
   cursor: pointer;
   white-space: nowrap;
   min-height: 28px;
   transition:
-    background var(--md-motion-duration-short) var(--md-motion-effect-fast),
-    color var(--md-motion-duration-short) var(--md-motion-effect-fast);
+    background var(--duration-short) var(--spring-effect-fast),
+    color var(--duration-short) var(--spring-effect-fast),
+    transform var(--duration-medium) var(--spring-spatial);
 }
 
 .modeBtn:hover {
-  background: var(--md-color-surface-container-high);
-  color: var(--md-color-on-surface);
+  background: var(--color-surface-container-high);
+  color: var(--color-text);
+}
+
+.modeBtn:active {
+  transform: scale(0.95);
 }
 
 .modeBtnActive {
-  background: var(--md-color-primary);
-  color: var(--md-color-on-primary);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
 }
 
 .modeBtnActive:hover {
-  background: var(--md-color-primary);
-  color: var(--md-color-on-primary);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
 }
 
+/* Option rows: full-width, inputs and button match */
 .optionRow {
   display: flex;
   gap: var(--space-sm);
   align-items: flex-start;
+  width: 100%;
+}
+
+.optionRow > * {
+  min-width: 0;
 }
 
 .optionRow input:first-child {
-  flex: 1;
+  flex: 1 1 0;
 }
 
 .optionRow input:nth-child(2) {
-  flex: 1;
+  flex: 1 1 0;
 }
 
-@media (max-width: 480px) {
-  .optionRow {
-    flex-wrap: wrap;
-  }
-
-  .optionRow input:first-child,
-  .optionRow input:nth-child(2) {
-    flex: 1 1 100%;
-  }
+/* Remove button stays compact */
+.optionRow > button {
+  flex: 0 0 auto;
+  align-self: stretch;
 }
 
+/* Action buttons at bottom match full width of form */
 .createActions {
   display: flex;
   justify-content: flex-end;
@@ -172,6 +184,8 @@
   flex-wrap: wrap;
 }
 
+/* --- Mobile --- */
+
 @media (max-width: 480px) {
   .container {
     padding: var(--space-lg) var(--space-md);
@@ -179,6 +193,15 @@
 
   .title {
     font-size: 2.25rem;
+  }
+
+  .optionRow {
+    flex-wrap: wrap;
+  }
+
+  .optionRow input:first-child,
+  .optionRow input:nth-child(2) {
+    flex: 1 1 100%;
   }
 
   .createActions {

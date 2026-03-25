@@ -1,34 +1,44 @@
+/* M3 Expressive VotingMethodInfo */
+
 .container {
   margin-top: var(--space-md);
 }
 
 .toggleBtn {
+  position: relative;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: space-between;
   width: 100%;
   padding: var(--space-sm) var(--space-md);
-  background-color: var(--color-bg-hover);
+  background-color: var(--color-surface-container);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--shape-sm);
   color: var(--color-text-muted);
   font-size: 0.875rem;
   cursor: pointer;
-  transition: all 150ms ease;
+  transition:
+    background-color var(--duration-short) var(--spring-effect-fast),
+    border-color var(--duration-short) var(--spring-effect-fast),
+    color var(--duration-short) var(--spring-effect-fast);
 }
 
 .toggleBtn:hover {
   background-color: var(--color-bg);
   color: var(--color-text);
+  border-color: var(--color-primary);
 }
 
 .toggleIcon {
   font-size: 0.75rem;
+  transition: transform var(--duration-medium) var(--spring-spatial);
 }
 
 .infoCard {
   margin-top: var(--space-sm);
   padding: var(--space-md);
+  animation: fadeUp var(--duration-medium) var(--spring-effect) both;
 }
 
 .infoTitle {
@@ -63,8 +73,13 @@
 .methodItem {
   margin-bottom: var(--space-sm);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--shape-sm);
   overflow: hidden;
+  transition: border-color var(--duration-short) var(--spring-effect-fast);
+}
+
+.methodItem:hover {
+  border-color: var(--color-primary);
 }
 
 .methodHeader {
@@ -79,11 +94,11 @@
   font-size: 0.9375rem;
   font-weight: 500;
   cursor: pointer;
-  transition: background-color 150ms ease;
+  transition: background-color var(--duration-short) var(--spring-effect-fast);
 }
 
 .methodHeader:hover {
-  background-color: var(--color-bg-hover);
+  background-color: var(--color-surface-container-high);
 }
 
 .methodContent {
@@ -92,6 +107,7 @@
   font-size: 0.875rem;
   color: var(--color-text-muted);
   line-height: 1.6;
+  animation: fadeUp var(--duration-short) var(--spring-effect) both;
 }
 
 .methodContent p {

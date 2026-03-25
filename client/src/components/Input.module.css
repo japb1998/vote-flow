@@ -1,7 +1,10 @@
+/* M3 Expressive Input — spring focus, outlined style */
+
 .wrapper {
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);
+  width: 100%;
 }
 
 .label {
@@ -14,18 +17,20 @@
   padding: var(--space-sm) var(--space-md);
   background-color: var(--color-bg-elevated);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--shape-sm);
   color: var(--color-text);
   font-size: 1rem;
-  transition: border-color 150ms ease, box-shadow 150ms ease;
   min-height: 44px;
   width: 100%;
+  transition:
+    border-color var(--duration-short) var(--spring-effect-fast),
+    box-shadow var(--duration-medium) var(--spring-effect);
 }
 
 .input:focus {
   outline: none;
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 20%, transparent);
 }
 
 .input::placeholder {

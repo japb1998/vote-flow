@@ -1,0 +1,101 @@
+/* Palette picker dropdown — M3 Expressive */
+
+.container {
+  position: relative;
+}
+
+.trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  background: var(--color-surface-container);
+  cursor: pointer;
+  padding: 0;
+  transition:
+    background-color var(--duration-short) var(--spring-effect-fast),
+    border-color var(--duration-short) var(--spring-effect-fast),
+    transform var(--duration-medium) var(--spring-spatial);
+}
+
+.trigger:hover {
+  background: var(--color-surface-container-high);
+  border-color: var(--color-primary);
+}
+
+.trigger:active {
+  transform: scale(0.9);
+}
+
+.swatch {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: block;
+}
+
+/* Dropdown */
+.dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--shape-md);
+  padding: var(--space-xs);
+  min-width: 180px;
+  box-shadow: var(--elevation-3);
+  z-index: 100;
+  animation: fadeScale var(--duration-medium) var(--spring-spatial) both;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  width: 100%;
+  padding: var(--space-sm) var(--space-md);
+  border: none;
+  border-radius: var(--shape-sm);
+  background: transparent;
+  color: var(--color-text);
+  font-size: 0.875rem;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-short) var(--spring-effect-fast),
+    transform var(--duration-medium) var(--spring-spatial);
+}
+
+.option:hover {
+  background: var(--color-bg-hover);
+}
+
+.option:active {
+  transform: scale(0.97);
+}
+
+.active {
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+}
+
+.optionSwatch {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.optionLabel {
+  flex: 1;
+  text-align: left;
+}
+
+.check {
+  font-size: 0.75rem;
+  color: var(--color-primary);
+  font-weight: 700;
+}
