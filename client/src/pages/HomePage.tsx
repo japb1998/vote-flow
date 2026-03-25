@@ -6,7 +6,9 @@ import { Input } from '../components/Input';
 import { Select } from '../components/Select';
 import { useSocket } from '../contexts/SocketContext';
 import { VotingMethodInfo, VotingMethodInfoStandalone } from '../components/VotingMethodInfo';
+import { BulkOptionInput } from '../components/BulkOptionInput';
 import { VotingMethod } from '../types';
+import type { ParsedOption } from '../utils/optionParsers';
 import styles from './HomePage.module.css';
 
 interface OptionInput {
@@ -26,6 +28,7 @@ export function HomePage() {
     { name: '', description: '' },
     { name: '', description: '' }
   ]);
+  const [inputMode, setInputMode] = useState<'manual' | 'bulk'>('manual');
 
   const { createSession, joinSession } = useSocket();
 
@@ -61,6 +64,20 @@ export function HomePage() {
     const newOptions = [...options];
     newOptions[index][field] = value;
     setOptions(newOptions);
+  };
+
+  const handleBulkApply = (parsed: ParsedOption[]) => {
+    setOptions(parsed.map(p => ({ name: p.name, description: p.description })));
+    setInputMode('manual');
+  };
+
+  const handleSessionImport = (session: { title?: string; votingMethod?: string; options: ParsedOption[] }) => {
+    if (session.title) setSessionTitle(session.title);
+    if (session.votingMethod && ['single', 'approval', 'ranked', 'score'].includes(session.votingMethod)) {
+      setVotingMethod(session.votingMethod as VotingMethod);
+    }
+    setOptions(session.options.map(p => ({ name: p.name, description: p.description })));
+    setInputMode('manual');
   };
 
   const votingMethods = [
@@ -144,32 +161,57 @@ export function HomePage() {
             <VotingMethodInfo selectedMethod={votingMethod} />
 
             <div className={styles.optionsSection}>
-              <label className={styles.label}>Options</label>
-              {options.map((option, index) => (
-                <div key={index} className={styles.optionRow}>
-                  <Input
-                    placeholder={`Option ${index + 1}`}
-                    value={option.name}
-                    onChange={(e) => updateOption(index, 'name', e.target.value)}
-                  />
-                  <Input
-                    placeholder="Description (optional)"
-                    value={option.description}
-                    onChange={(e) => updateOption(index, 'description', e.target.value)}
-                  />
-                  {options.length > 2 && (
-                    <Button
-                      variant="ghost"
-                      onClick={() => removeOption(index)}
-                    >
-                      ×
-                    </Button>
-                  )}
+              <div className={styles.optionsHeader}>
+                <label className={styles.label}>Options</label>
+                <div className={styles.modeSwitcher}>
+                  <button
+                    type="button"
+                    className={`${styles.modeBtn} ${inputMode === 'manual' ? styles.modeBtnActive : ''}`}
+                    onClick={() => setInputMode('manual')}
+                  >
+                    Manual
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.modeBtn} ${inputMode === 'bulk' ? styles.modeBtnActive : ''}`}
+                    onClick={() => setInputMode('bulk')}
+                  >
+                    Bulk / Import
+                  </button>
                 </div>
-              ))}
-              <Button variant="secondary" onClick={addOption}>
-                + Add Option
-              </Button>
+              </div>
+
+              {inputMode === 'manual' ? (
+                <>
+                  {options.map((option, index) => (
+                    <div key={index} className={styles.optionRow}>
+                      <Input
+                        placeholder={`Option ${index + 1}`}
+                        value={option.name}
+                        onChange={(e) => updateOption(index, 'name', e.target.value)}
+                      />
+                      <Input
+                        placeholder="Description (optional)"
+                        value={option.description}
+                        onChange={(e) => updateOption(index, 'description', e.target.value)}
+                      />
+                      {options.length > 2 && (
+                        <Button
+                          variant="ghost"
+                          onClick={() => removeOption(index)}
+                        >
+                          ×
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                  <Button variant="secondary" onClick={addOption}>
+                    + Add Option
+                  </Button>
+                </>
+              ) : (
+                <BulkOptionInput onParse={handleBulkApply} onSessionImport={handleSessionImport} />
+              )}
             </div>
 
             <div className={styles.createActions}>

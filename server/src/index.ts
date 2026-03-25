@@ -7,6 +7,7 @@ import { Server } from 'socket.io';
 import path from 'path';
 import { setupSocketHandlers } from './socket';
 import { createStore } from './store';
+import { parseYAML, parseSessionYAML } from './parseYaml';
 
 const app = express();
 const httpServer = createServer(app);
@@ -54,6 +55,18 @@ app.use(globalLimiter);
 
 app.get('/health', (_, res) => {
   res.json({ status: 'ok', timestamp: Date.now() });
+});
+
+// YAML parsing endpoint (offloads js-yaml to the server)
+app.post('/api/parse-yaml', (req, res) => {
+  const { content, mode } = req.body as { content?: string; mode?: string };
+  if (typeof content !== 'string') {
+    return res.status(400).json({ ok: false, error: 'Missing "content" string' });
+  }
+  if (mode === 'session') {
+    return res.json(parseSessionYAML(content));
+  }
+  return res.json(parseYAML(content));
 });
 
 // Serve static client files in production

@@ -78,7 +78,7 @@
 }
 
 .createCard {
-  max-width: 500px;
+  max-width: 600px;
   margin: 0 auto;
   background: var(--md-color-surface-container-low);
   box-shadow: var(--md-elevation-1);
@@ -110,6 +110,54 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
+}
+
+.optionsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+
+.modeSwitcher {
+  display: flex;
+  gap: 2px;
+  background: var(--md-color-surface-container);
+  border-radius: var(--md-shape-full);
+  padding: 2px;
+}
+
+.modeBtn {
+  padding: var(--space-xs) var(--space-md);
+  border: none;
+  border-radius: var(--md-shape-full);
+  background: transparent;
+  color: var(--md-color-on-surface-variant);
+  font-size: var(--md-type-label);
+  font-weight: 500;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  white-space: nowrap;
+  min-height: 28px;
+  transition:
+    background var(--md-motion-duration-short) var(--md-motion-effect-fast),
+    color var(--md-motion-duration-short) var(--md-motion-effect-fast);
+}
+
+.modeBtn:hover {
+  background: var(--md-color-surface-container-high);
+  color: var(--md-color-on-surface);
+}
+
+.modeBtnActive {
+  background: var(--md-color-primary);
+  color: var(--md-color-on-primary);
+}
+
+.modeBtnActive:hover {
+  background: var(--md-color-primary);
+  color: var(--md-color-on-primary);
 }
 
 .optionRow {
