@@ -3,9 +3,9 @@ import { Button } from './Button';
 import {
   parseDelimitedText,
   parseJSON,
-  parseYAML,
-  parseCSV,
+  parseYAMLAsync,
   parseSessionFile,
+  parseSessionYAMLAsync,
   detectFormat,
   type ParsedOption,
   type ParsedSession,
@@ -24,21 +24,12 @@ const FORMAT_LABELS: Record<InputFormat, string> = {
   text: 'Text',
   json: 'JSON',
   yaml: 'YAML',
-  csv: 'CSV',
 };
 
 const FORMAT_PLACEHOLDERS: Record<InputFormat, string> = {
   text: 'Option A, Option B, Option C\n\nOr one per line:\nOption A\nOption B\n\nUse \\, or \\; to escape delimiters',
   json: '["Option A", "Option B"]\n\nor full session:\n{\n  "title": "What to eat?",\n  "votingMethod": "ranked",\n  "options": ["Pizza", "Tacos"]\n}',
   yaml: '- Option A\n- Option B\n\nor full session:\ntitle: What to eat?\nvotingMethod: ranked\noptions:\n  - Pizza\n  - name: Tacos\n    description: Mexican food',
-  csv: 'name,description\nOption A,First option\nOption B,Second option',
-};
-
-const PARSERS: Record<InputFormat, (input: string) => ReturnType<typeof parseDelimitedText>> = {
-  text: parseDelimitedText,
-  json: parseJSON,
-  yaml: parseYAML,
-  csv: parseCSV,
 };
 
 export function BulkOptionInput({ onParse, onSessionImport }: BulkOptionInputProps) {
@@ -68,50 +59,73 @@ export function BulkOptionInput({ onParse, onSessionImport }: BulkOptionInputPro
       return;
     }
 
-    const parser = PARSERS[format];
-    const result = parser(value);
-    if (result.ok) {
-      setPreview(result.options);
-      setError('');
-    } else {
-      setPreview([]);
-      setError(result.error);
-    }
+    let cancelled = false;
 
-    // For JSON/YAML, also try to extract session metadata
-    if (format === 'json' || format === 'yaml') {
-      try {
-        const trimmed = value.trim();
-        if (format === 'json' && trimmed.startsWith('{')) {
-          const obj = JSON.parse(trimmed);
-          if (obj.title || obj.votingMethod) {
-            setSessionMeta({
-              title: typeof obj.title === 'string' ? obj.title : undefined,
-              votingMethod: typeof obj.votingMethod === 'string' ? obj.votingMethod : undefined,
-            });
-          } else {
-            setSessionMeta(null);
-          }
-        } else if (format === 'yaml') {
-          const titleMatch = trimmed.match(/^title:\s*(.+)/m);
-          const methodMatch = trimmed.match(/^votingMethod:\s*(.+)/m);
-          if (titleMatch || methodMatch) {
-            setSessionMeta({
-              title: titleMatch?.[1]?.trim().replace(/^['"]|['"]$/g, ''),
-              votingMethod: methodMatch?.[1]?.trim().replace(/^['"]|['"]$/g, ''),
-            });
-          } else {
+    async function parse() {
+      if (format === 'yaml') {
+        // YAML parsing is async (server-side)
+        const result = await parseYAMLAsync(value);
+        if (cancelled) return;
+        if (result.ok) {
+          setPreview(result.options);
+          setError('');
+        } else {
+          setPreview([]);
+          setError(result.error);
+        }
+
+        // Also try session metadata extraction
+        const sessionResult = await parseSessionYAMLAsync(value);
+        if (cancelled) return;
+        if (sessionResult.ok && (sessionResult.session.title || sessionResult.session.votingMethod)) {
+          setSessionMeta({
+            title: sessionResult.session.title,
+            votingMethod: sessionResult.session.votingMethod,
+          });
+        } else {
+          setSessionMeta(null);
+        }
+      } else {
+        // Text and JSON are synchronous
+        const parser = format === 'json' ? parseJSON : parseDelimitedText;
+        const result = parser(value);
+        if (cancelled) return;
+        if (result.ok) {
+          setPreview(result.options);
+          setError('');
+        } else {
+          setPreview([]);
+          setError(result.error);
+        }
+
+        // For JSON, extract session metadata
+        if (format === 'json') {
+          try {
+            const trimmed = value.trim();
+            if (trimmed.startsWith('{')) {
+              const obj = JSON.parse(trimmed);
+              if (obj.title || obj.votingMethod) {
+                setSessionMeta({
+                  title: typeof obj.title === 'string' ? obj.title : undefined,
+                  votingMethod: typeof obj.votingMethod === 'string' ? obj.votingMethod : undefined,
+                });
+              } else {
+                setSessionMeta(null);
+              }
+            } else {
+              setSessionMeta(null);
+            }
+          } catch {
             setSessionMeta(null);
           }
         } else {
           setSessionMeta(null);
         }
-      } catch {
-        setSessionMeta(null);
       }
-    } else {
-      setSessionMeta(null);
     }
+
+    parse();
+    return () => { cancelled = true; };
   }, [value, format]);
 
   // Auto-detect format when pasting or typing
@@ -129,16 +143,16 @@ export function BulkOptionInput({ onParse, onSessionImport }: BulkOptionInputPro
 
   const handleFileUpload = (file: File) => {
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       const content = e.target?.result as string;
       if (!content) return;
 
-      // Try full session parse first
-      const sessionResult = parseSessionFile(content, file.name);
+      // Try full session parse first (async for YAML)
+      const sessionResult = await parseSessionFile(content, file.name);
       if (sessionResult.ok) {
         const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
         const formatMap: Record<string, InputFormat> = {
-          json: 'json', yaml: 'yaml', yml: 'yaml', csv: 'csv', txt: 'text',
+          json: 'json', yaml: 'yaml', yml: 'yaml', txt: 'text',
         };
         setFormat(formatMap[ext] ?? 'text');
         setValue(content);
@@ -228,7 +242,7 @@ export function BulkOptionInput({ onParse, onSessionImport }: BulkOptionInputPro
         <input
           ref={fileInputRef}
           type="file"
-          accept=".json,.yaml,.yml,.csv,.txt"
+          accept=".json,.yaml,.yml,.txt"
           className={styles.fileInput}
           onChange={(e) => {
             const file = e.target.files?.[0];
@@ -245,7 +259,7 @@ export function BulkOptionInput({ onParse, onSessionImport }: BulkOptionInputPro
           Upload file
         </Button>
         <div className={styles.hint}>
-          .json, .yaml, .csv, .txt
+          .json, .yaml, .txt
         </div>
         {preview.length > 0 && (
           <Button

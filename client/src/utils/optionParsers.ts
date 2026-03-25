@@ -4,8 +4,7 @@
  * Supported formats:
  *   - Delimited text (comma, semicolon, newline) with backslash escaping
  *   - JSON (array of strings or array of {name, description} objects)
- *   - YAML (list of strings or list of {name, description} mappings)
- *   - CSV  (columns: name, description — header row optional)
+ *   - YAML (parsed server-side via js-yaml — POST /api/parse-yaml)
  *
  * Escaping rules for delimited text:
  *   \, → literal comma
@@ -25,7 +24,6 @@ export interface ParsedSession {
   options: ParsedOption[];
 }
 
-export type ParseError = { message: string };
 export type ParseResult =
   | { ok: true; options: ParsedOption[] }
   | { ok: false; error: string };
@@ -33,6 +31,8 @@ export type ParseResult =
 export type SessionParseResult =
   | { ok: true; session: ParsedSession }
   | { ok: false; error: string };
+
+export type InputFormat = 'text' | 'json' | 'yaml';
 
 // ---------------------------------------------------------------------------
 // Delimited text (comma, semicolon, or newline separated)
@@ -172,177 +172,51 @@ export function parseJSON(input: string): ParseResult {
 }
 
 // ---------------------------------------------------------------------------
-// YAML (lightweight parser — no dependency)
+// YAML — parsed server-side via js-yaml (POST /api/parse-yaml)
 // ---------------------------------------------------------------------------
 
 /**
- * Accepts YAML lists:
- *   - Option A
- *   - Option B
- *
- * Or mapping lists:
- *   - name: Option A
- *     description: Some desc
- *   - name: Option B
+ * Calls the server endpoint to parse YAML using js-yaml.
+ * This is the primary YAML parser — always async.
  */
-export function parseYAML(input: string): ParseResult {
+export async function parseYAMLAsync(input: string): Promise<ParseResult> {
   const trimmed = input.trim();
   if (!trimmed) return { ok: false, error: 'Empty input' };
 
-  const lines = trimmed.split('\n');
-  const options: ParsedOption[] = [];
-  let current: Partial<ParsedOption> | null = null;
-
-  for (const rawLine of lines) {
-    const line = rawLine.trimEnd();
-
-    // Skip empty lines and comments
-    if (!line.trim() || line.trim().startsWith('#')) continue;
-
-    // List item: "- value" or "- name: value"
-    const listMatch = line.match(/^(\s*)-\s+(.*)/);
-    if (listMatch) {
-      // Flush previous item
-      if (current?.name) {
-        options.push({ name: current.name, description: current.description ?? '' });
-      }
-
-      const value = listMatch[2].trim();
-
-      // Check if it's a mapping key: "name: value"
-      const kvMatch = value.match(/^name:\s*(.*)/);
-      if (kvMatch) {
-        current = { name: unquoteYAML(kvMatch[1].trim()), description: '' };
-      } else {
-        current = { name: unquoteYAML(value), description: '' };
-      }
-      continue;
-    }
-
-    // Continuation mapping key (indented under a list item): "  description: value"
-    if (current && line.match(/^\s+/)) {
-      const descMatch = line.match(/^\s+description:\s*(.*)/);
-      if (descMatch) {
-        current.description = unquoteYAML(descMatch[1].trim());
-      }
-      // Also allow "name:" on its own indented line
-      const nameMatch = line.match(/^\s+name:\s*(.*)/);
-      if (nameMatch && !current.name) {
-        current.name = unquoteYAML(nameMatch[1].trim());
-      }
-      continue;
-    }
+  try {
+    const res = await fetch('/api/parse-yaml', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: trimmed }),
+    });
+    return await res.json() as ParseResult;
+  } catch {
+    return { ok: false, error: 'Failed to reach server for YAML parsing' };
   }
-
-  // Flush last item
-  if (current?.name) {
-    options.push({ name: current.name, description: current.description ?? '' });
-  }
-
-  if (options.length === 0) {
-    return { ok: false, error: 'No valid options found. Use YAML list syntax: "- Option Name"' };
-  }
-
-  return { ok: true, options };
 }
-
-/** Remove surrounding quotes from a YAML string value. */
-function unquoteYAML(s: string): string {
-  if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) {
-    return s.slice(1, -1);
-  }
-  return s;
-}
-
-// ---------------------------------------------------------------------------
-// CSV
-// ---------------------------------------------------------------------------
 
 /**
- * Parses CSV with optional header row.
- * If the first row contains "name" (case-insensitive), it's treated as a header.
- * Otherwise all rows are treated as data.
- *
- * Columns: name[, description]
- * Supports quoted fields with commas inside: "Option A, with comma", description
+ * Parse a full session from YAML via the server endpoint.
  */
-export function parseCSV(input: string): ParseResult {
+export async function parseSessionYAMLAsync(input: string): Promise<SessionParseResult> {
   const trimmed = input.trim();
   if (!trimmed) return { ok: false, error: 'Empty input' };
 
-  const rows = parseCSVRows(trimmed);
-  if (rows.length === 0) return { ok: false, error: 'No rows found' };
-
-  let dataRows = rows;
-  let nameCol = 0;
-  let descCol = 1;
-
-  // Detect header row
-  const firstRow = rows[0].map(c => c.toLowerCase().trim());
-  const nameIdx = firstRow.indexOf('name');
-  if (nameIdx !== -1) {
-    nameCol = nameIdx;
-    const descIdx = firstRow.indexOf('description');
-    descCol = descIdx !== -1 ? descIdx : -1;
-    dataRows = rows.slice(1);
+  try {
+    const res = await fetch('/api/parse-yaml', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: trimmed, mode: 'session' }),
+    });
+    return await res.json() as SessionParseResult;
+  } catch {
+    return { ok: false, error: 'Failed to reach server for YAML parsing' };
   }
-
-  const options: ParsedOption[] = [];
-  for (const row of dataRows) {
-    const name = (row[nameCol] ?? '').trim();
-    const desc = descCol >= 0 ? (row[descCol] ?? '').trim() : '';
-    if (name) options.push({ name, description: desc });
-  }
-
-  if (options.length === 0) return { ok: false, error: 'No valid options found in CSV' };
-  return { ok: true, options };
-}
-
-/** Simple CSV row parser supporting quoted fields. */
-function parseCSVRows(input: string): string[][] {
-  const rows: string[][] = [];
-  const lines = input.split('\n');
-
-  for (const line of lines) {
-    if (!line.trim()) continue;
-    const fields: string[] = [];
-    let current = '';
-    let inQuotes = false;
-
-    for (let i = 0; i < line.length; i++) {
-      const ch = line[i];
-      if (inQuotes) {
-        if (ch === '"' && line[i + 1] === '"') {
-          current += '"';
-          i++;
-        } else if (ch === '"') {
-          inQuotes = false;
-        } else {
-          current += ch;
-        }
-      } else {
-        if (ch === '"') {
-          inQuotes = true;
-        } else if (ch === ',') {
-          fields.push(current);
-          current = '';
-        } else {
-          current += ch;
-        }
-      }
-    }
-    fields.push(current);
-    rows.push(fields);
-  }
-
-  return rows;
 }
 
 // ---------------------------------------------------------------------------
-// Auto-detect format and parse
+// Auto-detect format
 // ---------------------------------------------------------------------------
-
-export type InputFormat = 'text' | 'json' | 'yaml' | 'csv';
 
 export function detectFormat(input: string): InputFormat {
   const trimmed = input.trim();
@@ -351,44 +225,14 @@ export function detectFormat(input: string): InputFormat {
   // JSON: starts with [ or {
   if (trimmed[0] === '[' || trimmed[0] === '{') return 'json';
 
-  // YAML: lines start with "- "
+  // YAML: lines start with "- " or contain "key: value" patterns
   const lines = trimmed.split('\n').filter(l => l.trim());
   const yamlLines = lines.filter(l => l.trim().startsWith('- '));
   if (yamlLines.length >= 2) return 'yaml';
-
-  // CSV: first line contains "name" header or multiple comma-separated quoted fields
-  const firstLine = lines[0];
-  if (firstLine.toLowerCase().includes('name') && firstLine.includes(',')) return 'csv';
-  // Multiple lines each containing commas with consistent field counts
-  if (lines.length >= 2) {
-    const fieldCounts = lines.map(l => parseCSVRows(l)[0]?.length ?? 0);
-    if (fieldCounts[0] >= 2 && fieldCounts.every(c => c === fieldCounts[0])) return 'csv';
-  }
+  // Also detect top-level mapping keys like "title:", "options:"
+  if (lines.some(l => /^(title|votingMethod|options):\s*/i.test(l))) return 'yaml';
 
   return 'text';
-}
-
-export function parseAuto(input: string): ParseResult {
-  const format = detectFormat(input);
-  switch (format) {
-    case 'json': return parseJSON(input);
-    case 'yaml': return parseYAML(input);
-    case 'csv': return parseCSV(input);
-    default: return parseDelimitedText(input);
-  }
-}
-
-/** Parse file content based on file extension. */
-export function parseFile(content: string, filename: string): ParseResult {
-  const ext = filename.split('.').pop()?.toLowerCase() ?? '';
-  switch (ext) {
-    case 'json': return parseJSON(content);
-    case 'yaml':
-    case 'yml': return parseYAML(content);
-    case 'csv': return parseCSV(content);
-    case 'txt': return parseDelimitedText(content);
-    default: return parseAuto(content);
-  }
 }
 
 // ---------------------------------------------------------------------------
@@ -460,100 +304,28 @@ export function parseSessionJSON(input: string): SessionParseResult {
 }
 
 /**
- * Parse a full session from YAML.
- *
- * Accepted format:
- *   title: What to eat?
- *   votingMethod: ranked
- *   options:
- *     - Pizza
- *     - name: Tacos
- *       description: Mexican food
- */
-export function parseSessionYAML(input: string): SessionParseResult {
-  const trimmed = input.trim();
-  if (!trimmed) return { ok: false, error: 'Empty input' };
-
-  const lines = trimmed.split('\n');
-  let title: string | undefined;
-  let votingMethod: string | undefined;
-  let optionsStartIndex = -1;
-
-  // Look for top-level keys before the options list
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    const titleMatch = line.match(/^title:\s*(.*)/);
-    if (titleMatch) {
-      title = unquoteYAML(titleMatch[1].trim()) || undefined;
-      continue;
-    }
-    const methodMatch = line.match(/^votingMethod:\s*(.*)/);
-    if (methodMatch) {
-      votingMethod = unquoteYAML(methodMatch[1].trim()) || undefined;
-      continue;
-    }
-    const optionsMatch = line.match(/^options:\s*$/);
-    if (optionsMatch) {
-      optionsStartIndex = i + 1;
-      continue;
-    }
-  }
-
-  if (votingMethod && !VALID_METHODS.includes(votingMethod)) {
-    return { ok: false, error: `Invalid votingMethod: "${votingMethod}". Use: ${VALID_METHODS.join(', ')}` };
-  }
-
-  // If no "options:" key was found, try parsing the whole thing as a list
-  const optionsText = optionsStartIndex >= 0
-    ? lines.slice(optionsStartIndex).join('\n')
-    : trimmed;
-
-  const optResult = parseYAML(optionsText);
-  if (!optResult.ok) return optResult;
-
-  // If we found no top-level keys and just a list, return options only
-  if (!title && !votingMethod && optionsStartIndex < 0) {
-    return { ok: true, session: { options: optResult.options } };
-  }
-
-  return {
-    ok: true,
-    session: {
-      title,
-      votingMethod,
-      options: optResult.options,
-    },
-  };
-}
-
-/**
  * Parse a full session from a file (auto-detects by extension).
  * Returns session metadata + options when available.
+ * Async because YAML parsing is done server-side.
  */
-export function parseSessionFile(content: string, filename: string): SessionParseResult {
+export async function parseSessionFile(content: string, filename: string): Promise<SessionParseResult> {
   const ext = filename.split('.').pop()?.toLowerCase() ?? '';
 
   switch (ext) {
     case 'json': return parseSessionJSON(content);
     case 'yaml':
-    case 'yml': return parseSessionYAML(content);
-    case 'csv': {
-      const r = parseCSV(content);
-      return r.ok ? { ok: true, session: { options: r.options } } : r;
-    }
+    case 'yml': return parseSessionYAMLAsync(content);
     case 'txt': {
       const r = parseDelimitedText(content);
       return r.ok ? { ok: true, session: { options: r.options } } : r;
     }
     default: {
-      // Try JSON first, then YAML, then CSV
+      // Try JSON first, then YAML
       const jsonR = parseSessionJSON(content);
       if (jsonR.ok) return jsonR;
-      const yamlR = parseSessionYAML(content);
+      const yamlR = await parseSessionYAMLAsync(content);
       if (yamlR.ok) return yamlR;
-      const csvR = parseCSV(content);
-      if (csvR.ok) return { ok: true, session: { options: csvR.options } };
-      return { ok: false, error: 'Could not parse file. Use .json, .yaml, or .csv format.' };
+      return { ok: false, error: 'Could not parse file. Use .json or .yaml format.' };
     }
   }
 }
