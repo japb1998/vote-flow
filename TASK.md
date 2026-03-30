@@ -1,3 +1,0 @@
-- Change storage to use sqlite
-- Think about ussing sse instead of websockets for the different events.
-- Add JS docs to the calculate.ts functions.

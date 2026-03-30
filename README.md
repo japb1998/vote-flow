@@ -5,7 +5,6 @@
 Real-time collaborative voting application with multiple voting mechanisms.
 
 [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Support%20VoteFlow-FFDD00?style=flat&logo=buy-me-a-coffee&logoColor=black)](https://www.buymeacoffee.com/voteflow)
-[![GitHub Sponsors](https://img.shields.io/badge/GitHub%20Sponsors-Sponsor%20VoteFlow-EA4AAA?style=flat&logo=github-sponsors)](https://github.com/sponsors/voteflow)
 
 ## Features
 
@@ -33,8 +32,9 @@ npm run dev
 ```
 
 This starts:
-- **Client**: http://localhost:5173
-- **Server**: http://localhost:3001
+
+- **Client**: <http://localhost:5173>
+- **Server**: <http://localhost:3001>
 
 ## Production Build
 
@@ -85,24 +85,33 @@ Only the session creator can close voting. Click "Close Voting" to end the sessi
 ## Voting Methods Explained
 
 ### Single Choice (Plurality)
+
 Each voter selects exactly one option. The option with the most votes wins.
+
 - **Best for**: Simple decisions, binary choices
 
 ### Approval Voting
+
 Voters can approve of multiple options. The option with the most approvals wins.
+
 - **Best for**: Selecting multiple winners, hiring decisions
 
 ### Ranked Choice (Instant-Runoff)
+
 Rank all options by preference. If no option gets >50%, the lowest-performing option is eliminated and its votes redistribute to voters' next choices. This repeats until a majority winner emerges.
+
 - **Best for**: Elections, ranked preferences
 
 ### Score Voting (Range)
+
 Rate each option from 1-5 stars. The option with the highest total score wins.
+
 - **Best for**: Rating-based decisions, surveys
 
 ## Technologies Used
 
 ### Frontend
+
 - **React 18** - UI library
 - **TypeScript** - Type safety
 - **Vite** - Build tool and dev server
@@ -111,6 +120,7 @@ Rate each option from 1-5 stars. The option with the highest total score wins.
 - **CSS Modules** - Scoped styling
 
 ### Backend
+
 - **Node.js** - JavaScript runtime
 - **Express** - Web framework
 - **Socket.io** - Real-time WebSocket communication
@@ -118,6 +128,7 @@ Rate each option from 1-5 stars. The option with the highest total score wins.
 - **TypeScript** - Type safety
 
 ### Development
+
 - **tsx** - TypeScript execution for dev
 - **concurrently** - Run client and server in parallel
 - **tsc** - TypeScript compiler
@@ -127,7 +138,6 @@ Rate each option from 1-5 stars. The option with the highest total score wins.
 If you find VoteFlow useful, consider supporting its development:
 
 - **Buy Me a Coffee**: [buymeacoffee.com/japb](https://buymeacoffee.com/japb)
-- **GitHub Sponsors**: [github.com/sponsors/japb1998](https://github.com/sponsors/japb1998)
 
 ## License
 
