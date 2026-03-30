@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import styles from './PalettePicker.module.css';
 
 const PALETTES = [
+  { id: 'pink',    label: 'Pink',    swatch: '#EC4899' },
   { id: 'indigo',  label: 'Indigo',  swatch: '#6366f1' },
   { id: 'teal',    label: 'Teal',    swatch: '#0d9488' },
   { id: 'rose',    label: 'Rose',    swatch: '#e11d48' },
@@ -17,7 +18,7 @@ type PaletteId = typeof PALETTES[number]['id'];
 function getInitialPalette(): PaletteId {
   const stored = localStorage.getItem('vf-palette');
   if (stored && PALETTES.some(p => p.id === stored)) return stored as PaletteId;
-  return 'indigo';
+  return 'pink';
 }
 
 export function PalettePicker() {

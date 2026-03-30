@@ -7,6 +7,7 @@ import { Select } from '../components/Select';
 import { useSocket } from '../contexts/SocketContext';
 import { VotingMethodInfo, VotingMethodInfoStandalone } from '../components/VotingMethodInfo';
 import { BulkOptionInput } from '../components/BulkOptionInput';
+import { HeroLogo } from '../components/HeroLogo';
 import { VotingMethod } from '../types';
 import type { ParsedOption } from '../utils/optionParsers';
 import styles from './HomePage.module.css';
@@ -90,8 +91,7 @@ export function HomePage() {
   return (
     <div className={styles.container}>
       <div className={styles.hero}>
-        <h1 className={styles.title}>VoteFlow</h1>
-        <p className={styles.subtitle}>Real-time collaborative voting</p>
+        <HeroLogo />
       </div>
 
       {error && (

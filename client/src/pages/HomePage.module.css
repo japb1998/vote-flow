@@ -13,22 +13,6 @@
   margin-bottom: var(--space-2xl);
 }
 
-.title {
-  font-size: 3rem;
-  font-weight: 700;
-  background: linear-gradient(135deg, var(--color-primary), var(--color-ranked));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  margin-bottom: var(--space-sm);
-  word-break: break-word;
-}
-
-.subtitle {
-  color: var(--color-text-muted);
-  font-size: 1.125rem;
-}
-
 .error {
   padding: var(--space-md);
   background-color: rgba(239, 68, 68, 0.1);
@@ -189,10 +173,6 @@
 @media (max-width: 480px) {
   .container {
     padding: var(--space-lg) var(--space-md);
-  }
-
-  .title {
-    font-size: 2.25rem;
   }
 
   .optionRow {

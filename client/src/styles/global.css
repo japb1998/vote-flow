@@ -9,12 +9,12 @@
    ========================================== */
 
 :root {
-  /* --- Palette: Indigo (default) --- */
-  --palette-primary: #6366f1;
-  --palette-primary-hover: #818cf8;
+  /* --- Palette: Pink (default) --- */
+  --palette-primary: #EC4899;
+  --palette-primary-hover: #F472B6;
   --palette-on-primary: #ffffff;
-  --palette-primary-container: #e0e0ff;
-  --palette-on-primary-container: #1a1a5e;
+  --palette-primary-container: #fce7f3;
+  --palette-on-primary-container: #831843;
 
   /* --- Semantic colors --- */
   --color-success: #22c55e;
@@ -164,6 +164,14 @@
   --palette-on-primary: #ffffff;
   --palette-primary-container: #e2e8f0;
   --palette-on-primary-container: #1e293b;
+}
+
+[data-palette="pink"] {
+  --palette-primary: #EC4899;
+  --palette-primary-hover: #F472B6;
+  --palette-on-primary: #ffffff;
+  --palette-primary-container: #fce7f3;
+  --palette-on-primary-container: #831843;
 }
 
 /* ==========================================================================
