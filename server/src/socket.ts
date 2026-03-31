@@ -12,8 +12,8 @@ import { generateSessionId, sanitizeInput, sanitizeOptionName, sanitizeOptionDes
 import { calculateResults } from './voting/calculate';
 import { SessionStore } from './store';
 
-const CLOSED_SESSION_TTL = 30 * 60 * 1000;
-const CLEANUP_INTERVAL = 60 * 1000;
+const ACTIVE_SESSION_TTL = parseInt(process.env.ACTIVE_SESSION_TTL ?? '', 10) || 24 * 60 * 60 * 1000; // 24 hours
+const CLOSED_SESSION_TTL = parseInt(process.env.CLOSED_SESSION_TTL ?? '', 10) || 30 * 60 * 1000;     // 30 minutes
 
 export function setupSocketHandlers(io: Server, store: SessionStore): void {
   io.on('connection', (socket: Socket) => {
@@ -50,15 +50,17 @@ export function setupSocketHandlers(io: Server, store: SessionStore): void {
           description: sanitizeOptionDescription(opt.description)
         }));
 
+        const now = Date.now();
         const session: Session = {
           id: sessionId,
           title: sanitizeInput(title),
-          createdAt: Date.now(),
+          createdAt: now,
           status: 'active',
           votingMethod,
           options: sanitizedOptions,
           votes: [],
-          creatorId
+          creatorId,
+          expiresAt: now + ACTIVE_SESSION_TTL
         };
 
         await store.createSession(session);
@@ -234,10 +236,12 @@ export function setupSocketHandlers(io: Server, store: SessionStore): void {
         }
 
         const now = Date.now();
-        await store.updateSession(sessionId, { status: 'closed', closedAt: now });
+        const expiresAt = now + CLOSED_SESSION_TTL;
+        await store.updateSession(sessionId, { status: 'closed', closedAt: now, expiresAt });
 
         session.status = 'closed';
         session.closedAt = now;
+        session.expiresAt = expiresAt;
 
         const results = calculateResults(
           session.votes,
@@ -279,15 +283,4 @@ export function setupSocketHandlers(io: Server, store: SessionStore): void {
     });
   });
 
-  // Periodic cleanup of expired sessions
-  setInterval(async () => {
-    try {
-      const cleaned = await store.cleanupExpiredSessions(CLOSED_SESSION_TTL);
-      if (cleaned > 0) {
-        console.log(`Cleaned up ${cleaned} expired sessions`);
-      }
-    } catch (error) {
-      console.error('Error during cleanup:', error);
-    }
-  }, CLEANUP_INTERVAL);
 }

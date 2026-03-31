@@ -10,7 +10,7 @@ export interface SessionStore {
   // Sessions
   createSession(session: Session): Promise<void>;
   getSession(id: string): Promise<Session | null>;
-  updateSession(id: string, updates: Partial<Pick<Session, 'status' | 'closedAt'>>): Promise<void>;
+  updateSession(id: string, updates: Partial<Pick<Session, 'status' | 'closedAt' | 'expiresAt'>>): Promise<void>;
   deleteSession(id: string): Promise<void>;
   getActiveSessionCount(): Promise<number>;
 
@@ -32,7 +32,7 @@ export interface SessionStore {
   incrementIpSessionCount(ip: string): Promise<void>;
 
   // Cleanup
-  cleanupExpiredSessions(ttlMs: number): Promise<number>;
+  cleanupExpiredSessions(): Promise<number>;
 
   // Lifecycle
   initialize(): Promise<void>;

@@ -8,6 +8,7 @@ import path from 'path';
 import { setupSocketHandlers } from './socket';
 import { createStore } from './store';
 import { parseYAML, parseSessionYAML } from './parseYaml';
+import { scheduleCleanup } from './jobs/cleanup-expired-sessions';
 
 const app = express();
 const httpServer = createServer(app);
@@ -94,6 +95,7 @@ const PORT = process.env.PORT || 3001;
 store.initialize()
   .then(() => {
     setupSocketHandlers(io, store);
+    scheduleCleanup(store);
 
     httpServer.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);

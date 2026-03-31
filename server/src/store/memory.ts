@@ -15,10 +15,17 @@ export class MemorySessionStore implements SessionStore {
 
   async getSession(id: string): Promise<Session | null> {
     const session = this.sessions.get(id);
-    return session ? { ...session, votes: [...session.votes] } : null;
+    if (!session) return null;
+
+    // Lazy TTL: treat expired sessions as non-existent
+    if (Date.now() > session.expiresAt) {
+      return null;
+    }
+
+    return { ...session, votes: [...session.votes] };
   }
 
-  async updateSession(id: string, updates: Partial<Pick<Session, 'status' | 'closedAt'>>): Promise<void> {
+  async updateSession(id: string, updates: Partial<Pick<Session, 'status' | 'closedAt' | 'expiresAt'>>): Promise<void> {
     const session = this.sessions.get(id);
     if (!session) return;
     Object.assign(session, updates);
@@ -30,9 +37,10 @@ export class MemorySessionStore implements SessionStore {
   }
 
   async getActiveSessionCount(): Promise<number> {
+    const now = Date.now();
     let count = 0;
     for (const session of this.sessions.values()) {
-      if (session.status === 'active') count++;
+      if (session.status === 'active' && now <= session.expiresAt) count++;
     }
     return count;
   }
@@ -105,11 +113,11 @@ export class MemorySessionStore implements SessionStore {
     this.ipSessionCount.set(ip, (this.ipSessionCount.get(ip) ?? 0) + 1);
   }
 
-  async cleanupExpiredSessions(ttlMs: number): Promise<number> {
+  async cleanupExpiredSessions(): Promise<number> {
     const now = Date.now();
     let cleaned = 0;
     for (const [id, session] of this.sessions) {
-      if (session.status === 'closed' && session.closedAt && now > session.closedAt + ttlMs) {
+      if (now > session.expiresAt) {
         this.sessions.delete(id);
         this.sessionUsers.delete(id);
         cleaned++;

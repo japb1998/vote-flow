@@ -30,6 +30,7 @@ export interface Session {
   votes: Vote[];
   creatorId: string;
   closedAt?: number;
+  expiresAt: number;
 }
 
 export interface Results {
