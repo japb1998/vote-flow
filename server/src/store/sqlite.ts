@@ -36,7 +36,8 @@ export class SqliteSessionStore implements SessionStore {
         options TEXT NOT NULL,
         creator_id TEXT NOT NULL,
         created_at INTEGER NOT NULL,
-        closed_at INTEGER
+        closed_at INTEGER,
+        expires_at INTEGER NOT NULL
       );
 
       CREATE TABLE IF NOT EXISTS users (
@@ -70,7 +71,23 @@ export class SqliteSessionStore implements SessionStore {
       CREATE INDEX IF NOT EXISTS idx_votes_session_id ON votes (session_id);
       CREATE INDEX IF NOT EXISTS idx_sessions_status ON sessions (status);
       CREATE INDEX IF NOT EXISTS idx_sessions_closed_at ON sessions (closed_at);
+      CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions (expires_at);
     `);
+
+    // Migration: add expires_at column to existing databases
+    const columns = await this.db.all("PRAGMA table_info(sessions)");
+    const hasExpiresAt = columns.some((col: { name: string }) => col.name === 'expires_at');
+    if (!hasExpiresAt) {
+      // Default: active sessions expire 24h from creation, closed sessions 30min from close
+      await this.db.exec(`ALTER TABLE sessions ADD COLUMN expires_at INTEGER`);
+      await this.db.run(
+        `UPDATE sessions SET expires_at = CASE
+           WHEN closed_at IS NOT NULL THEN closed_at + 1800000
+           ELSE created_at + 86400000
+         END`
+      );
+      await this.db.exec(`CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions (expires_at)`);
+    }
   }
 
   private getDb(): Database {
@@ -81,10 +98,10 @@ export class SqliteSessionStore implements SessionStore {
   async createSession(session: Session): Promise<void> {
     const db = this.getDb();
     await db.run(
-      `INSERT INTO sessions (id, title, status, voting_method, options, creator_id, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO sessions (id, title, status, voting_method, options, creator_id, created_at, expires_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [session.id, session.title, session.status, session.votingMethod,
-       JSON.stringify(session.options), session.creatorId, session.createdAt]
+       JSON.stringify(session.options), session.creatorId, session.createdAt, session.expiresAt]
     );
   }
 
@@ -92,6 +109,11 @@ export class SqliteSessionStore implements SessionStore {
     const db = this.getDb();
     const row = await db.get('SELECT * FROM sessions WHERE id = ?', id);
     if (!row) return null;
+
+    // Lazy TTL: treat expired sessions as non-existent
+    if (row.expires_at && Date.now() > row.expires_at) {
+      return null;
+    }
 
     const votes = await this.getVotes(id);
 
@@ -104,11 +126,12 @@ export class SqliteSessionStore implements SessionStore {
       options: JSON.parse(row.options) as Option[],
       votes,
       creatorId: row.creator_id,
-      closedAt: row.closed_at ?? undefined
+      closedAt: row.closed_at ?? undefined,
+      expiresAt: row.expires_at
     };
   }
 
-  async updateSession(id: string, updates: Partial<Pick<Session, 'status' | 'closedAt'>>): Promise<void> {
+  async updateSession(id: string, updates: Partial<Pick<Session, 'status' | 'closedAt' | 'expiresAt'>>): Promise<void> {
     const db = this.getDb();
     const sets: string[] = [];
     const values: unknown[] = [];
@@ -120,6 +143,10 @@ export class SqliteSessionStore implements SessionStore {
     if (updates.closedAt !== undefined) {
       sets.push('closed_at = ?');
       values.push(updates.closedAt);
+    }
+    if (updates.expiresAt !== undefined) {
+      sets.push('expires_at = ?');
+      values.push(updates.expiresAt);
     }
 
     if (sets.length === 0) return;
@@ -135,7 +162,10 @@ export class SqliteSessionStore implements SessionStore {
 
   async getActiveSessionCount(): Promise<number> {
     const db = this.getDb();
-    const row = await db.get("SELECT COUNT(*) as count FROM sessions WHERE status = 'active'");
+    const row = await db.get(
+      "SELECT COUNT(*) as count FROM sessions WHERE status = 'active' AND expires_at > ?",
+      [Date.now()]
+    );
     return row?.count ?? 0;
   }
 
@@ -252,13 +282,13 @@ export class SqliteSessionStore implements SessionStore {
     );
   }
 
-  async cleanupExpiredSessions(ttlMs: number): Promise<number> {
+  async cleanupExpiredSessions(): Promise<number> {
     const db = this.getDb();
     const now = Date.now();
     // With foreign_keys ON and CASCADE, deleting sessions auto-deletes users and votes
     const result = await db.run(
-      'DELETE FROM sessions WHERE closed_at IS NOT NULL AND closed_at + ? < ?',
-      [ttlMs, now]
+      'DELETE FROM sessions WHERE expires_at < ?',
+      [now]
     );
 
     // Clean up stale IP counters (older than 1 hour)
