@@ -41,7 +41,7 @@ Full-stack TypeScript app: React frontend communicating with Express backend via
 - **`voting/calculate.ts`** — Result calculation for all 4 voting methods (single, approval, ranked choice with instant-runoff, score)
 - **`types/index.ts`** — Shared TypeScript types (Session, Vote, Results, socket payloads)
 - **`utils/helpers.ts`** — Input validation, sanitization, session ID generation, rate limit checks
-- **`jobs/cleanup-expired-sessions.ts`** — Standalone cron script to delete expired sessions from the database
+- **`jobs/cleanup-expired-sessions.ts`** — node-cron scheduled job to delete expired sessions from the database
 - **`__tests__/`** — Jest tests (ts-jest preset, tests must be in `__tests__/` and match `*.test.ts`)
 
 ### Client (`client/src/`)
@@ -68,6 +68,7 @@ SQLite with WAL mode. Schema is initialized inline in `server/src/store/sqlite.t
 | `ALLOWED_ORIGINS` | `http://localhost:5173` | CORS origins (comma-separated) |
 | `ACTIVE_SESSION_TTL` | `86400000` (24h) | TTL for active sessions (ms) |
 | `CLOSED_SESSION_TTL` | `1800000` (30min) | TTL for closed sessions (ms) |
+| `CLEANUP_CRON` | `* * * * *` (every min) | Cron schedule for session cleanup |
 
 ## Conventions
 

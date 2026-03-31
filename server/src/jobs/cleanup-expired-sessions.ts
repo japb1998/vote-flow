@@ -1,20 +1,17 @@
-import { createStore } from '../store';
+import { schedule } from 'node-cron';
+import { SessionStore } from '../store';
 
-async function main() {
-  const store = createStore();
-  await store.initialize();
+const CLEANUP_SCHEDULE = process.env.CLEANUP_CRON ?? '* * * * *'; // every minute
 
-  try {
-    const cleaned = await store.cleanupExpiredSessions();
-    if (cleaned > 0) {
-      console.log(`Cleaned up ${cleaned} expired sessions`);
+export function scheduleCleanup(store: SessionStore) {
+  return schedule(CLEANUP_SCHEDULE, async () => {
+    try {
+      const cleaned = await store.cleanupExpiredSessions();
+      if (cleaned > 0) {
+        console.log(`Cleaned up ${cleaned} expired sessions`);
+      }
+    } catch (error) {
+      console.error('Error during cleanup:', error);
     }
-  } finally {
-    await store.close();
-  }
+  });
 }
-
-main().catch((err) => {
-  console.error('Cleanup failed:', err);
-  process.exit(1);
-});
