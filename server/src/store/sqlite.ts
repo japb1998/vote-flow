@@ -1,7 +1,7 @@
 import sqlite3 from 'sqlite3';
 import { open, Database } from 'sqlite';
 import path from 'path';
-import { Session, Vote, Option, Selection, VotingMethod } from '../types';
+import { Session, Vote, Option, Selection, VotingMethod, SessionSummary } from '../types';
 import { SessionStore, UserInfo } from './interface';
 
 export class SqliteSessionStore implements SessionStore {
@@ -238,6 +238,31 @@ export class SqliteSessionStore implements SessionStore {
     const db = this.getDb();
     const rows = await db.all('SELECT session_id FROM users WHERE id = ?', userId);
     return rows.map(r => r.session_id);
+  }
+
+  async getUserSessionSummaries(userId: string): Promise<SessionSummary[]> {
+    const db = this.getDb();
+    const now = Date.now();
+    const rows = await db.all(
+      `SELECT s.id, s.title, s.status, s.voting_method, s.created_at, s.creator_id,
+              (SELECT COUNT(*) FROM votes v WHERE v.session_id = s.id) AS vote_count,
+              (SELECT COUNT(*) FROM users u2 WHERE u2.session_id = s.id) AS user_count
+       FROM users u
+       JOIN sessions s ON s.id = u.session_id
+       WHERE u.id = ? AND s.expires_at > ?
+       ORDER BY s.created_at DESC`,
+      [userId, now]
+    );
+    return rows.map(r => ({
+      id: r.id,
+      title: r.title,
+      status: r.status as 'active' | 'closed',
+      votingMethod: r.voting_method as VotingMethod,
+      createdAt: r.created_at,
+      role: r.creator_id === userId ? 'creator' as const : 'voter' as const,
+      voteCount: r.vote_count,
+      userCount: r.user_count
+    }));
   }
 
   async upsertVote(sessionId: string, vote: Vote): Promise<void> {

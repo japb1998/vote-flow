@@ -52,6 +52,7 @@ export interface CreateSessionPayload {
   title: string;
   votingMethod: VotingMethod;
   options: { name: string; description?: string }[];
+  userId?: string;
 }
 
 export interface JoinSessionPayload {
@@ -63,4 +64,15 @@ export interface JoinSessionPayload {
 export interface SubmitVotePayload {
   sessionId: string;
   vote: Omit<Vote, 'id' | 'timestamp'>;
+}
+
+export interface SessionSummary {
+  id: string;
+  title: string;
+  status: 'active' | 'closed';
+  votingMethod: VotingMethod;
+  createdAt: number;
+  role: 'creator' | 'voter';
+  voteCount: number;
+  userCount: number;
 }

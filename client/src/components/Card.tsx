@@ -5,11 +5,18 @@ interface CardProps {
   children: ReactNode;
   className?: string;
   hoverable?: boolean;
+  onClick?: () => void;
 }
 
-export function Card({ children, className = '', hoverable = false }: CardProps) {
+export function Card({ children, className = '', hoverable = false, onClick }: CardProps) {
   return (
-    <div className={`${styles.card} ${hoverable ? styles.hoverable : ''} ${className}`}>
+    <div
+      className={`${styles.card} ${hoverable ? styles.hoverable : ''} ${className}`}
+      onClick={onClick}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') onClick(); } : undefined}
+    >
       {children}
     </div>
   );

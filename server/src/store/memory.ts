@@ -1,4 +1,4 @@
-import { Session, Vote } from '../types';
+import { Session, Vote, SessionSummary } from '../types';
 import { SessionStore, UserInfo } from './interface';
 
 export class MemorySessionStore implements SessionStore {
@@ -88,6 +88,27 @@ export class MemorySessionStore implements SessionStore {
       if (users.has(userId)) sessions.push(sessionId);
     }
     return sessions;
+  }
+
+  async getUserSessionSummaries(userId: string): Promise<SessionSummary[]> {
+    const now = Date.now();
+    const summaries: SessionSummary[] = [];
+    for (const [sessionId, users] of this.sessionUsers) {
+      if (!users.has(userId)) continue;
+      const session = this.sessions.get(sessionId);
+      if (!session || now > session.expiresAt) continue;
+      summaries.push({
+        id: session.id,
+        title: session.title,
+        status: session.status,
+        votingMethod: session.votingMethod,
+        createdAt: session.createdAt,
+        role: session.creatorId === userId ? 'creator' : 'voter',
+        voteCount: session.votes.length,
+        userCount: users.size
+      });
+    }
+    return summaries.sort((a, b) => b.createdAt - a.createdAt);
   }
 
   async upsertVote(sessionId: string, vote: Vote): Promise<void> {

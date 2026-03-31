@@ -12,6 +12,10 @@
   animation: fadeUp var(--duration-medium) var(--spring-effect) both;
 }
 
+.hoverable {
+  cursor: pointer;
+}
+
 .hoverable:hover {
   box-shadow: var(--elevation-2);
   transform: translateY(-2px);

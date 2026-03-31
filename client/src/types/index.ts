@@ -69,3 +69,14 @@ export interface UserInfo {
   id: string;
   name: string;
 }
+
+export interface SessionSummary {
+  id: string;
+  title: string;
+  status: 'active' | 'closed';
+  votingMethod: VotingMethod;
+  createdAt: number;
+  role: 'creator' | 'voter';
+  voteCount: number;
+  userCount: number;
+}

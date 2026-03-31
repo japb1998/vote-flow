@@ -1,4 +1,4 @@
-import { Session, Vote, VotingMethod, Option } from '../types';
+import { Session, Vote, VotingMethod, Option, SessionSummary } from '../types';
 
 export interface UserInfo {
   id: string;
@@ -22,6 +22,7 @@ export interface SessionStore {
   updateUser(sessionId: string, userId: string, updates: Partial<UserInfo>): Promise<void>;
   removeUserBySocketId(socketId: string): Promise<{ sessionId: string; userId: string }[]>;
   findUserSessions(userId: string): Promise<string[]>;
+  getUserSessionSummaries(userId: string): Promise<SessionSummary[]>;
 
   // Votes
   upsertVote(sessionId: string, vote: Vote): Promise<void>;

@@ -4,6 +4,7 @@ import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { Select } from '../components/Select';
+import { Badge } from '../components/Badge';
 import { useSocket } from '../contexts/SocketContext';
 import { VotingMethodInfo, VotingMethodInfoStandalone } from '../components/VotingMethodInfo';
 import { BulkOptionInput } from '../components/BulkOptionInput';
@@ -19,7 +20,7 @@ interface OptionInput {
 
 export function HomePage() {
   const navigate = useNavigate();
-  const { currentSession, error } = useSocket();
+  const { currentSession, error, userSessions } = useSocket();
   const [joinSessionId, setJoinSessionId] = useState('');
   const [userName, setUserName] = useState('');
   const [showCreate, setShowCreate] = useState(false);
@@ -136,6 +137,44 @@ export function HomePage() {
               </div>
             </Card>
           </div>
+
+          {userSessions.length > 0 && (
+            <div className={styles.sessionsSection}>
+              <h2 className={styles.sessionsTitle}>Your Sessions</h2>
+              <div className={styles.sessionsList}>
+                {userSessions.map(session => (
+                  <Card
+                    key={session.id}
+                    className={styles.sessionItem}
+                    hoverable
+                    onClick={() => {
+                      const persistentId = localStorage.getItem('vf-user-id');
+                      navigate(`/session/${session.id}${persistentId ? `?userId=${persistentId}` : ''}`);
+                    }}
+                  >
+                    <div className={styles.sessionHeader}>
+                      <span className={styles.sessionName}>{session.title}</span>
+                      <div className={styles.sessionBadges}>
+                        {session.role === 'creator' ? (
+                          <Badge variant="info">Creator</Badge>
+                        ) : (
+                          <Badge variant="default">Voted</Badge>
+                        )}
+                        <Badge variant={session.status === 'active' ? 'success' : 'warning'}>
+                          {session.status}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div className={styles.sessionMeta}>
+                      <span>{session.votingMethod}</span>
+                      <span>{session.voteCount} vote{session.voteCount !== 1 ? 's' : ''}</span>
+                      <span>{session.userCount} participant{session.userCount !== 1 ? 's' : ''}</span>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
 
           <VotingMethodInfoStandalone />
         </>

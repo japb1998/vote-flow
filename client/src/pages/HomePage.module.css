@@ -168,6 +168,59 @@
   flex-wrap: wrap;
 }
 
+/* --- Your Sessions --- */
+
+.sessionsSection {
+  margin-top: var(--space-2xl);
+}
+
+.sessionsTitle {
+  font-size: 1.25rem;
+  margin-bottom: var(--space-md);
+}
+
+.sessionsList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.sessionItem {
+  cursor: pointer;
+  padding: var(--space-md) var(--space-lg);
+}
+
+.sessionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+
+.sessionName {
+  font-weight: 600;
+  font-size: 1rem;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sessionBadges {
+  display: flex;
+  gap: var(--space-xs);
+  flex-shrink: 0;
+}
+
+.sessionMeta {
+  display: flex;
+  gap: var(--space-md);
+  margin-top: var(--space-xs);
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
 /* --- Mobile --- */
 
 @media (max-width: 480px) {

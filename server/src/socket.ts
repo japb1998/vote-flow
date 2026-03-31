@@ -40,9 +40,11 @@ export function setupSocketHandlers(io: Server, store: SessionStore): void {
           return;
         }
 
-        const { title, votingMethod, options } = payload;
+        const { title, votingMethod, options, userId: clientUserId } = payload;
         const sessionId = generateSessionId();
-        const creatorId = uuidv4();
+        const creatorId = (clientUserId && typeof clientUserId === 'string' && clientUserId.length > 0)
+          ? clientUserId
+          : uuidv4();
 
         const sanitizedOptions: Option[] = options.map(opt => ({
           id: uuidv4(),
@@ -269,6 +271,21 @@ export function setupSocketHandlers(io: Server, store: SessionStore): void {
         }
       } catch (error) {
         console.error('Error updating user name:', error);
+      }
+    });
+
+    socket.on('get-user-sessions', async (payload: { userId: string }) => {
+      try {
+        const { userId } = payload;
+        if (!userId || typeof userId !== 'string') {
+          socket.emit('error', { message: 'Invalid user ID' });
+          return;
+        }
+        const sessions = await store.getUserSessionSummaries(userId);
+        socket.emit('user-sessions', { sessions });
+      } catch (error) {
+        console.error('Error fetching user sessions:', error);
+        socket.emit('error', { message: 'Failed to fetch sessions' });
       }
     });
 

@@ -1,6 +1,16 @@
 import React, { useRef, createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { Session, Results, Vote, UserInfo } from '../types';
+import { Session, Results, Vote, UserInfo, SessionSummary } from '../types';
+
+function getPersistentUserId(): string {
+  const key = 'vf-user-id';
+  let id = localStorage.getItem(key);
+  if (!id) {
+    id = crypto.randomUUID();
+    localStorage.setItem(key, id);
+  }
+  return id;
+}
 
 interface SocketContextType {
   socket: Socket | null;
@@ -10,12 +20,14 @@ interface SocketContextType {
   userName: string | null;
   results: Results | null;
   users: UserInfo[];
+  userSessions: SessionSummary[];
   createSession: (title: string, votingMethod: string, options: { name: string; description?: string }[]) => void;
   joinSession: (sessionId: string, userName: string, userId?: string) => void;
   submitVote: (sessionId: string, vote: Omit<Vote, 'id' | 'timestamp'>) => void;
   closeSession: (sessionId: string) => void;
   leaveSession: () => void;
   updateUserName: (newName: string) => void;
+  fetchUserSessions: () => void;
   error: string | null;
   errorCode: string | null;
 }
@@ -26,8 +38,10 @@ export function SocketProvider({ children }: { children: ReactNode }) {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [currentSession, setCurrentSession] = useState<Session | null>(null);
+  const persistentUserId = useRef(getPersistentUserId());
   const [userId, setUserId] = useState<string | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
+  const [userSessions, setUserSessions] = useState<SessionSummary[]>([]);
   const [results, setResults] = useState<Results | null>(null);
   const [users, setUsers] = useState<UserInfo[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -49,7 +63,10 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     newSocket.on('connect', () => {
       setIsConnected(true);
       console.log('Connected to server');
-      
+
+      // Fetch user's session history
+      newSocket.emit('get-user-sessions', { userId: persistentUserId.current });
+
       // handle reconnection logic
       if (userIdRef.current && sessionRef.current) {
         newSocket.emit('join-session', {
@@ -127,6 +144,10 @@ export function SocketProvider({ children }: { children: ReactNode }) {
       }
     });
 
+    newSocket.on('user-sessions', ({ sessions }: { sessions: SessionSummary[] }) => {
+      setUserSessions(sessions);
+    });
+
     newSocket.on('error', ({ message, code }) => {
       setError(message);
       setErrorCode(code || null);
@@ -141,11 +162,11 @@ export function SocketProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const createSession = useCallback((title: string, votingMethod: string, options: { name: string; description?: string }[]) => {
-    socket?.emit('create-session', { title, votingMethod, options });
+    socket?.emit('create-session', { title, votingMethod, options, userId: persistentUserId.current });
   }, [socket]);
 
   const joinSession = useCallback((sessionId: string, userName: string, existingUserId?: string) => {
-    socket?.emit('join-session', { sessionId, userName, userId: existingUserId });
+    socket?.emit('join-session', { sessionId, userName, userId: existingUserId || persistentUserId.current });
   }, [socket]);
 
   const submitVote = useCallback((sessionId: string, vote: Omit<Vote, 'id' | 'timestamp'>) => {
@@ -164,7 +185,13 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     setUserName(null);
     setResults(null);
     setUsers([]);
-  }, []);
+    // Refresh session history
+    socket?.emit('get-user-sessions', { userId: persistentUserId.current });
+  }, [socket]);
+
+  const fetchUserSessions = useCallback(() => {
+    socket?.emit('get-user-sessions', { userId: persistentUserId.current });
+  }, [socket]);
 
   const updateUserName = useCallback((newName: string) => {
     setUserName(newName);
@@ -182,12 +209,14 @@ export function SocketProvider({ children }: { children: ReactNode }) {
       userName,
       results,
       users,
+      userSessions,
       createSession,
       joinSession,
       submitVote,
       closeSession,
       leaveSession,
       updateUserName,
+      fetchUserSessions,
       error,
       errorCode
     }}>
