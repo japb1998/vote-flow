@@ -1,7 +1,7 @@
 import { schedule } from 'node-cron';
 import { SessionStore } from '../store';
 
-const CLEANUP_SCHEDULE = process.env.CLEANUP_CRON ?? '* * * * *'; // every minute
+const CLEANUP_SCHEDULE = process.env.CLEANUP_CRON ?? '*/5 * * * *'; // every 5 minutes
 
 export function scheduleCleanup(store: SessionStore) {
   return schedule(CLEANUP_SCHEDULE, async () => {

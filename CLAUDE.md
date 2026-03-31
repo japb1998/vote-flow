@@ -68,7 +68,7 @@ SQLite with WAL mode. Schema is initialized inline in `server/src/store/sqlite.t
 | `ALLOWED_ORIGINS` | `http://localhost:5173` | CORS origins (comma-separated) |
 | `ACTIVE_SESSION_TTL` | `86400000` (24h) | TTL for active sessions (ms) |
 | `CLOSED_SESSION_TTL` | `1800000` (30min) | TTL for closed sessions (ms) |
-| `CLEANUP_CRON` | `* * * * *` (every min) | Cron schedule for session cleanup |
+| `CLEANUP_CRON` | `*/5 * * * *` (every 5min) | Cron schedule for session cleanup |
 
 ## Conventions
 
