@@ -8,6 +8,32 @@
 
 /* --- Format tabs --- */
 
+.tabBar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.templateBtn {
+  padding: var(--space-xs) var(--space-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--shape-full);
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    color var(--duration-short) var(--spring-effect-fast),
+    border-color var(--duration-short) var(--spring-effect-fast);
+}
+
+.templateBtn:hover {
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
 .tabs {
   display: flex;
   gap: 2px;
@@ -77,27 +103,57 @@
   background: color-mix(in srgb, var(--color-primary) 5%, transparent);
 }
 
-.textarea {
-  display: block;
-  width: 100%;
+/* --- Code editor (react-simple-code-editor + prismjs) --- */
+
+.editor {
   min-height: 80px;
   max-height: 320px;
-  padding: var(--space-sm) var(--space-md);
-  border: none;
-  border-radius: inherit;
-  background: transparent;
+  overflow: auto;
   color: var(--color-text);
-  font-family: var(--font-mono);
-  font-size: 0.875rem;
-  line-height: 1.6;
-  resize: vertical;
-  outline: none;
+  border-radius: inherit;
+  caret-color: var(--color-primary);
 }
 
-.textarea::placeholder {
+.editorTextarea {
+  outline: none !important;
+}
+
+.editor :global(.token.string),
+.editor :global(.token.attr-value) {
+  color: #a8db8e;
+}
+
+.editor :global(.token.number) {
+  color: #d4a76a;
+}
+
+.editor :global(.token.boolean),
+.editor :global(.token.null) {
+  color: #d19a66;
+}
+
+.editor :global(.token.property),
+.editor :global(.token.key),
+.editor :global(.token.atrule) {
+  color: var(--color-primary);
+}
+
+.editor :global(.token.punctuation) {
   color: var(--color-text-muted);
-  font-family: var(--font-mono);
-  opacity: 0.6;
+}
+
+.editor :global(.token.operator) {
+  color: #56b6c2;
+}
+
+.editor :global(.token.comment) {
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.editor :global(.token.important),
+.editor :global(.token.tag) {
+  color: #e06c75;
 }
 
 .dropOverlay {

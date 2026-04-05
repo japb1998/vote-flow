@@ -9,7 +9,7 @@ import {
   Option
 } from './types';
 import { generateSessionId, sanitizeInput, sanitizeOptionName, sanitizeOptionDescription, validateSessionPayload, canCreateSession, canJoinSession } from './utils/helpers';
-import { calculateResults } from './voting/calculate';
+import { calculateResults } from './voting';
 import { SessionStore } from './store';
 
 const ACTIVE_SESSION_TTL = parseInt(process.env.ACTIVE_SESSION_TTL ?? '', 10) || 24 * 60 * 60 * 1000; // 24 hours
@@ -40,11 +40,11 @@ export function setupSocketHandlers(io: Server, store: SessionStore): void {
           return;
         }
 
-        const { title, votingMethod, options } = payload;
+        const { title, votingMethod, options, config } = payload;
         const sessionId = generateSessionId();
         const creatorId = uuidv4();
 
-        const sanitizedOptions: Option[] = options.map(opt => ({
+        const sanitizedOptions: Option[] = (options || []).map(opt => ({
           id: uuidv4(),
           name: sanitizeOptionName(opt.name),
           description: sanitizeOptionDescription(opt.description)
@@ -60,7 +60,8 @@ export function setupSocketHandlers(io: Server, store: SessionStore): void {
           options: sanitizedOptions,
           votes: [],
           creatorId,
-          expiresAt: now + ACTIVE_SESSION_TTL
+          expiresAt: now + ACTIVE_SESSION_TTL,
+          config
         };
 
         await store.createSession(session);
@@ -147,7 +148,8 @@ export function setupSocketHandlers(io: Server, store: SessionStore): void {
         const results = calculateResults(
           session.votes,
           session.options.map(o => o.id),
-          session.votingMethod
+          session.votingMethod,
+          session.config
         );
 
         const usersMap = await store.getUsers(session.id);
@@ -208,7 +210,8 @@ export function setupSocketHandlers(io: Server, store: SessionStore): void {
         const results = calculateResults(
           votes,
           session.options.map(o => o.id),
-          session.votingMethod
+          session.votingMethod,
+          session.config
         );
 
         io.to(sessionId).emit('vote-submitted', { sessionId, vote: savedVote });
@@ -246,7 +249,8 @@ export function setupSocketHandlers(io: Server, store: SessionStore): void {
         const results = calculateResults(
           session.votes,
           session.options.map(o => o.id),
-          session.votingMethod
+          session.votingMethod,
+          session.config
         );
 
         io.to(sessionId).emit('session-updated', { session, results });

@@ -8,9 +8,13 @@ import { useSocket } from '../contexts/SocketContext';
 import { VotingMethodInfo, VotingMethodInfoStandalone } from '../components/VotingMethodInfo';
 import { BulkOptionInput } from '../components/BulkOptionInput';
 import { HeroLogo } from '../components/HeroLogo';
-import { VotingMethod } from '../types';
+import { VotingMethod, SessionConfig } from '../types';
+
+const FIBONACCI_SEQUENCE = [1, 2, 3, 5, 8, 13, 21, 34, 55, 89];
 import type { ParsedOption } from '../utils/optionParsers';
 import styles from './HomePage.module.css';
+
+const NO_OPTIONS_METHODS: VotingMethod[] = ['poker', 'roman', 'fist-of-five'];
 
 interface OptionInput {
   name: string;
@@ -30,15 +34,27 @@ export function HomePage() {
     { name: '', description: '' }
   ]);
   const [inputMode, setInputMode] = useState<'manual' | 'bulk'>('manual');
+  const [pokerMin, setPokerMin] = useState(1);
+  const [pokerMax, setPokerMax] = useState(89);
+  const [dotsPerVoter, setDotsPerVoter] = useState(3);
 
   const { createSession, joinSession } = useSocket();
+
+  const needsOptions = !NO_OPTIONS_METHODS.includes(votingMethod);
 
   const handleCreate = () => {
     if (!sessionTitle.trim()) return;
     const validOptions = options.filter(o => o.name.trim());
-    if (validOptions.length < 2) return;
-    
-    createSession(sessionTitle, votingMethod, validOptions);
+    if (needsOptions && validOptions.length < 2) return;
+
+    let config: SessionConfig | undefined;
+    if (votingMethod === 'poker') {
+      config = { pokerMin, pokerMax };
+    } else if (votingMethod === 'dot') {
+      config = { dotsPerVoter };
+    }
+
+    createSession(sessionTitle, votingMethod, needsOptions ? validOptions : [], config);
   };
 
   const handleJoin = () => {
@@ -72,10 +88,15 @@ export function HomePage() {
     setInputMode('manual');
   };
 
-  const handleSessionImport = (session: { title?: string; votingMethod?: string; options: ParsedOption[] }) => {
+  const handleSessionImport = (session: { title?: string; votingMethod?: string; options: ParsedOption[]; config?: { pokerMin?: number; pokerMax?: number; dotsPerVoter?: number } }) => {
     if (session.title) setSessionTitle(session.title);
-    if (session.votingMethod && ['single', 'approval', 'ranked', 'score'].includes(session.votingMethod)) {
+    if (session.votingMethod && ['single', 'approval', 'ranked', 'score', 'poker', 'dot', 'roman', 'fist-of-five'].includes(session.votingMethod)) {
       setVotingMethod(session.votingMethod as VotingMethod);
+    }
+    if (session.config) {
+      if (session.config.pokerMin !== undefined) setPokerMin(session.config.pokerMin);
+      if (session.config.pokerMax !== undefined) setPokerMax(session.config.pokerMax);
+      if (session.config.dotsPerVoter !== undefined) setDotsPerVoter(session.config.dotsPerVoter);
     }
     setOptions(session.options.map(p => ({ name: p.name, description: p.description })));
     setInputMode('manual');
@@ -85,7 +106,11 @@ export function HomePage() {
     { value: 'single', label: 'Single Choice (Plurality)' },
     { value: 'approval', label: 'Approval Voting' },
     { value: 'ranked', label: 'Ranked Choice (IRV)' },
-    { value: 'score', label: 'Score Voting (1-5)' }
+    { value: 'score', label: 'Score Voting (1-5)' },
+    { value: 'poker', label: 'Planning Poker' },
+    { value: 'dot', label: 'Dot Voting' },
+    { value: 'roman', label: 'Roman Voting' },
+    { value: 'fist-of-five', label: 'Fist of Five' },
   ];
 
   return (
@@ -160,6 +185,41 @@ export function HomePage() {
 
             <VotingMethodInfo selectedMethod={votingMethod} />
 
+            {votingMethod === 'poker' && (
+              <div className={styles.configSection}>
+                <label className={styles.label}>Fibonacci Range</label>
+                <div className={styles.configRow}>
+                  <Select
+                    label="Min"
+                    options={FIBONACCI_SEQUENCE.filter(n => n <= pokerMax).map(n => ({ value: String(n), label: String(n) }))}
+                    value={String(pokerMin)}
+                    onChange={(e) => setPokerMin(Number(e.target.value))}
+                  />
+                  <Select
+                    label="Max"
+                    options={FIBONACCI_SEQUENCE.filter(n => n >= pokerMin).map(n => ({ value: String(n), label: String(n) }))}
+                    value={String(pokerMax)}
+                    onChange={(e) => setPokerMax(Number(e.target.value))}
+                  />
+                </div>
+                <p className={styles.configHint}>
+                  Cards: {FIBONACCI_SEQUENCE.filter(n => n >= pokerMin && n <= pokerMax).join(', ')}
+                </p>
+              </div>
+            )}
+
+            {votingMethod === 'dot' && (
+              <div className={styles.configSection}>
+                <Select
+                  label="Dots per voter"
+                  options={Array.from({ length: 10 }, (_, i) => ({ value: String(i + 1), label: String(i + 1) }))}
+                  value={String(dotsPerVoter)}
+                  onChange={(e) => setDotsPerVoter(Number(e.target.value))}
+                />
+              </div>
+            )}
+
+            {needsOptions && (
             <div className={styles.optionsSection}>
               <div className={styles.optionsHeader}>
                 <label className={styles.label}>Options</label>
@@ -210,9 +270,10 @@ export function HomePage() {
                   </Button>
                 </>
               ) : (
-                <BulkOptionInput onParse={handleBulkApply} onSessionImport={handleSessionImport} />
+                <BulkOptionInput onParse={handleBulkApply} onSessionImport={handleSessionImport} votingMethod={votingMethod} />
               )}
             </div>
+            )}
 
             <div className={styles.createActions}>
               <Button variant="secondary" onClick={() => setShowCreate(false)}>
@@ -220,7 +281,7 @@ export function HomePage() {
               </Button>
               <Button
                 onClick={handleCreate}
-                disabled={!sessionTitle.trim() || options.filter(o => o.name.trim()).length < 2}
+                disabled={!sessionTitle.trim() || (needsOptions && options.filter(o => o.name.trim()).length < 2)}
               >
                 Create Session
               </Button>
