@@ -85,3 +85,41 @@
 .roundInfo p {
   color: var(--color-text-muted);
 }
+
+/* --- Summary stats (poker, fist-of-five, roman) --- */
+
+.summaryStats {
+  display: flex;
+  gap: var(--space-lg);
+  margin-top: var(--space-md);
+  padding: var(--space-md);
+  background-color: var(--color-surface-container);
+  border-radius: var(--shape-sm);
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.statLabel {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+.statValue {
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.consensusYes {
+  color: var(--color-success);
+}
+
+.consensusNo {
+  color: var(--color-danger);
+}

@@ -73,6 +73,27 @@
   margin-bottom: var(--space-xs);
 }
 
+.configSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.configRow {
+  display: flex;
+  gap: var(--space-md);
+}
+
+.configRow > * {
+  flex: 1;
+}
+
+.configHint {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+}
+
 .optionsSection {
   display: flex;
   flex-direction: column;

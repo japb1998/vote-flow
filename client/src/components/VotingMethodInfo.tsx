@@ -28,6 +28,26 @@ const methodDetails: Record<VotingMethod, { title: string; description: string; 
     title: 'Score Voting (Range)',
     description: 'Rate each option from 1-5 stars. The option with the highest total score wins.',
     example: 'Rate recipes from 1-5 to find the most popular'
+  },
+  poker: {
+    title: 'Planning Poker',
+    description: 'Each participant picks a card from a Fibonacci-like sequence to estimate effort. Results show average, median, and whether the team reached consensus.',
+    example: 'Sprint planning — estimate story points for a user story'
+  },
+  dot: {
+    title: 'Dot Voting',
+    description: 'Each voter distributes a fixed number of dots across options. The option with the most dots wins.',
+    example: 'Prioritize backlog items — spread 3 dots across your top picks'
+  },
+  roman: {
+    title: 'Roman Voting',
+    description: 'Participants give a thumbs up, down, or sideways to indicate support. Passes if thumbs-up outnumber thumbs-down.',
+    example: 'Quick consensus check — should we proceed with this approach?'
+  },
+  'fist-of-five': {
+    title: 'Fist of Five',
+    description: 'Hold up 1-5 fingers: 5 = strong support, 3 = neutral, 1 = blocking concern. Consensus is reached when no one votes 1 or 2.',
+    example: 'Gauge team confidence — how do we feel about this design?'
   }
 };
 

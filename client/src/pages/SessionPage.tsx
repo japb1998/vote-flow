@@ -14,14 +14,22 @@ const methodLabels: Record<VotingMethod, string> = {
   single: 'Single Choice',
   approval: 'Approval',
   ranked: 'Ranked Choice',
-  score: 'Score'
+  score: 'Score',
+  poker: 'Planning Poker',
+  dot: 'Dot Voting',
+  roman: 'Roman Voting',
+  'fist-of-five': 'Fist of Five',
 };
 
 const methodColors: Record<VotingMethod, 'info' | 'default'> = {
   single: 'info',
   approval: 'default',
   ranked: 'info',
-  score: 'default'
+  score: 'default',
+  poker: 'info',
+  dot: 'default',
+  roman: 'info',
+  'fist-of-five': 'default',
 };
 
 export function SessionPage() {
@@ -187,6 +195,55 @@ export function SessionPage() {
     return (selection?.type === 'score' ? selection.scores[optionId] : 0) as number || 0;
   };
 
+  const FIBONACCI_SEQUENCE = [1, 2, 3, 5, 8, 13, 21, 34, 55, 89];
+  const pokerMin = currentSession?.config?.pokerMin ?? 1;
+  const pokerMax = currentSession?.config?.pokerMax ?? 89;
+  const POKER_CARDS = FIBONACCI_SEQUENCE.filter(n => n >= pokerMin && n <= pokerMax).map(String);
+
+  const FIST_LABELS: Record<number, string> = {
+    1: 'Blocking concern',
+    2: 'Serious reservations',
+    3: 'Can live with it',
+    4: 'Good idea',
+    5: 'Strong support',
+  };
+  const DOTS_PER_VOTER = currentSession?.config?.dotsPerVoter ?? 3;
+
+  const handlePokerSelect = (value: string) => {
+    setSelection({ type: 'poker', value });
+  };
+
+  const handleRomanSelect = (vote: 'up' | 'down' | 'sideways') => {
+    setSelection({ type: 'roman', vote });
+  };
+
+  const handleFistSelect = (value: 1 | 2 | 3 | 4 | 5) => {
+    setSelection({ type: 'fist-of-five', value });
+  };
+
+  const handleDotChange = (optionId: string, delta: number) => {
+    const current = (selection?.type === 'dot' ? selection.allocations : {}) as Record<string, number>;
+    const currentDots = current[optionId] || 0;
+    const totalUsed = Object.values(current).reduce((sum, v) => sum + v, 0);
+    const newDots = Math.max(0, currentDots + delta);
+
+    if (delta > 0 && totalUsed >= DOTS_PER_VOTER) return;
+
+    setSelection({
+      type: 'dot',
+      allocations: { ...current, [optionId]: newDots }
+    });
+  };
+
+  const getDotCount = (optionId: string): number => {
+    return (selection?.type === 'dot' ? selection.allocations[optionId] : 0) || 0;
+  };
+
+  const getTotalDotsUsed = (): number => {
+    if (selection?.type !== 'dot') return 0;
+    return Object.values(selection.allocations).reduce((sum, v) => sum + v, 0);
+  };
+
   const getSelectionMode = (): 'single' | 'multiple' | 'rank' | 'score' => {
     if (!currentSession) return 'single';
     switch (currentSession.votingMethod) {
@@ -225,6 +282,14 @@ export function SessionPage() {
         return selection.rankings.length === (currentSession?.options.length || 0);
       case 'score':
         return Object.keys(selection.scores).length === (currentSession?.options.length || 0);
+      case 'poker':
+        return !!selection.value;
+      case 'roman':
+        return !!selection.vote;
+      case 'fist-of-five':
+        return !!selection.value;
+      case 'dot':
+        return Object.values(selection.allocations).reduce((sum, v) => sum + v, 0) > 0;
       default:
         return false;
     }
@@ -356,50 +421,145 @@ export function SessionPage() {
             {currentSession.votingMethod === 'score' && (
               <p className={styles.instruction}>Rate each option from 1-5</p>
             )}
+            {currentSession.votingMethod === 'poker' && (
+              <p className={styles.instruction}>Pick a card to estimate effort</p>
+            )}
+            {currentSession.votingMethod === 'dot' && (
+              <p className={styles.instruction}>Distribute {DOTS_PER_VOTER} dots across options ({DOTS_PER_VOTER - getTotalDotsUsed()} remaining)</p>
+            )}
+            {currentSession.votingMethod === 'roman' && (
+              <p className={styles.instruction}>Vote thumbs up, down, or sideways</p>
+            )}
+            {currentSession.votingMethod === 'fist-of-five' && (
+              <p className={styles.instruction}>Hold up 1-5 fingers to show your support level</p>
+            )}
 
-            <div className={styles.options}>
-              {currentSession.options.map((option, index) => (
-                <div
-                  key={option.id}
-                  className={`${styles.option} ${isSelected(option.id) ? styles.selected : ''}`}
-                  onClick={() => {
-                    if (!isActive) return;
-                    if (currentSession.votingMethod === 'single') handleSingleSelect(option.id);
-                    else if (currentSession.votingMethod === 'approval') handleApprovalToggle(option.id);
-                    else if (currentSession.votingMethod === 'ranked') handleRankSelect(option.id);
-                  }}
-                >
-                  {currentSession.votingMethod === 'ranked' ? (
-                    <span className={styles.rankNumber}>
-                      {getRankPosition(option.id) !== -1 ? `#${getRankPosition(option.id) + 1}` : `#${index + 1}`}
-                    </span>
-                  ) : currentSession.votingMethod === 'score' ? (
-                    <span className={styles.scoreNumber}>{getScore(option.id) || '-'}</span>
-                  ) : (
-                    <span className={`${styles.checkbox} ${isSelected(option.id) ? styles.checked : ''}`}>
-                      {isSelected(option.id) && '✓'}
-                    </span>
-                  )}
-                  <span className={styles.optionName}>{option.name}</span>
-                  {currentSession.votingMethod === 'score' && isActive && (
-                    <div className={styles.scoreButtons}>
-                      {[1, 2, 3, 4, 5].map(s => (
-                        <button
-                          key={s}
-                          className={`${styles.scoreBtn} ${getScore(option.id) === s ? styles.activeScore : ''}`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleScoreChange(option.id, s);
-                          }}
-                        >
-                          {s}
-                        </button>
-                      ))}
+            {/* Planning Poker cards */}
+            {currentSession.votingMethod === 'poker' && (
+              <div className={styles.pokerCards}>
+                {POKER_CARDS.map(card => (
+                  <button
+                    key={card}
+                    className={`${styles.pokerCard} ${selection?.type === 'poker' && selection.value === card ? styles.pokerCardSelected : ''}`}
+                    onClick={() => isActive && handlePokerSelect(card)}
+                    disabled={!isActive}
+                  >
+                    {card}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Roman Voting buttons */}
+            {currentSession.votingMethod === 'roman' && (
+              <div className={styles.romanButtons}>
+                {([['up', '👍', 'Support'], ['sideways', '👊', 'Neutral'], ['down', '👎', 'Oppose']] as const).map(([vote, emoji, label]) => (
+                  <button
+                    key={vote}
+                    className={`${styles.romanBtn} ${selection?.type === 'roman' && selection.vote === vote ? styles.romanBtnSelected : ''}`}
+                    onClick={() => isActive && handleRomanSelect(vote)}
+                    disabled={!isActive}
+                  >
+                    <span className={styles.romanEmoji}>{emoji}</span>
+                    <span className={styles.romanLabel}>{label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Fist of Five buttons */}
+            {currentSession.votingMethod === 'fist-of-five' && (
+              <div className={styles.fistButtons}>
+                {([1, 2, 3, 4, 5] as const).map(value => (
+                  <button
+                    key={value}
+                    className={`${styles.fistBtn} ${selection?.type === 'fist-of-five' && selection.value === value ? styles.fistBtnSelected : ''}`}
+                    onClick={() => isActive && handleFistSelect(value)}
+                    disabled={!isActive}
+                  >
+                    <span className={styles.fistNumber}>{value}</span>
+                    <span className={styles.fistLabel}>{FIST_LABELS[value]}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Dot Voting — standalone row interface */}
+            {currentSession.votingMethod === 'dot' && currentSession.options.length > 0 && (
+              <div className={styles.dotRows}>
+                {currentSession.options.map(option => (
+                  <div key={option.id} className={styles.dotRow}>
+                    <span className={styles.dotRowName}>{option.name}</span>
+                    <div className={styles.dotControls}>
+                      <button
+                        className={styles.dotBtn}
+                        onClick={() => handleDotChange(option.id, -1)}
+                        disabled={!isActive || getDotCount(option.id) === 0}
+                      >
+                        −
+                      </button>
+                      <span className={`${styles.dotCount} ${getDotCount(option.id) > 0 ? styles.dotCountActive : ''}`}>
+                        {getDotCount(option.id)}
+                      </span>
+                      <button
+                        className={styles.dotBtn}
+                        onClick={() => handleDotChange(option.id, 1)}
+                        disabled={!isActive || getTotalDotsUsed() >= DOTS_PER_VOTER}
+                      >
+                        +
+                      </button>
                     </div>
-                  )}
-                </div>
-              ))}
-            </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Option-based methods (single, approval, ranked, score) */}
+            {currentSession.votingMethod !== 'dot' && currentSession.options.length > 0 && (
+              <div className={styles.options}>
+                {currentSession.options.map((option, index) => (
+                  <div
+                    key={option.id}
+                    className={`${styles.option} ${isSelected(option.id) ? styles.selected : ''}`}
+                    onClick={() => {
+                      if (!isActive) return;
+                      if (currentSession.votingMethod === 'single') handleSingleSelect(option.id);
+                      else if (currentSession.votingMethod === 'approval') handleApprovalToggle(option.id);
+                      else if (currentSession.votingMethod === 'ranked') handleRankSelect(option.id);
+                    }}
+                  >
+                    {currentSession.votingMethod === 'ranked' ? (
+                      <span className={styles.rankNumber}>
+                        {getRankPosition(option.id) !== -1 ? `#${getRankPosition(option.id) + 1}` : `#${index + 1}`}
+                      </span>
+                    ) : currentSession.votingMethod === 'score' ? (
+                      <span className={styles.scoreNumber}>{getScore(option.id) || '-'}</span>
+                    ) : (
+                      <span className={`${styles.checkbox} ${isSelected(option.id) ? styles.checked : ''}`}>
+                        {isSelected(option.id) && '✓'}
+                      </span>
+                    )}
+                    <span className={styles.optionName}>{option.name}</span>
+                    {currentSession.votingMethod === 'score' && isActive && (
+                      <div className={styles.scoreButtons}>
+                        {[1, 2, 3, 4, 5].map(s => (
+                          <button
+                            key={s}
+                            className={`${styles.scoreBtn} ${getScore(option.id) === s ? styles.activeScore : ''}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleScoreChange(option.id, s);
+                            }}
+                          >
+                            {s}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
 
             {isActive && !hasVoted && (
               <Button

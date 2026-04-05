@@ -1,4 +1,4 @@
-export type VotingMethod = 'single' | 'approval' | 'ranked' | 'score';
+export type VotingMethod = 'single' | 'approval' | 'ranked' | 'score' | 'poker' | 'dot' | 'roman' | 'fist-of-five';
 
 export interface Option {
   id: string;
@@ -10,7 +10,11 @@ export type Selection =
   | { type: 'single'; optionId: string }
   | { type: 'approval'; optionIds: string[] }
   | { type: 'ranked'; rankings: string[] }
-  | { type: 'score'; scores: Record<string, number> };
+  | { type: 'score'; scores: Record<string, number> }
+  | { type: 'poker'; value: string }
+  | { type: 'dot'; allocations: Record<string, number> }
+  | { type: 'roman'; vote: 'up' | 'down' | 'sideways' }
+  | { type: 'fist-of-five'; value: 1 | 2 | 3 | 4 | 5 };
 
 export interface Vote {
   id: string;
@@ -18,6 +22,12 @@ export interface Vote {
   userName: string;
   selection: Selection;
   timestamp: number;
+}
+
+export interface SessionConfig {
+  pokerMin?: number;
+  pokerMax?: number;
+  dotsPerVoter?: number;
 }
 
 export interface Session {
@@ -31,6 +41,7 @@ export interface Session {
   creatorId: string;
   closedAt?: number;
   expiresAt: number;
+  config?: SessionConfig;
 }
 
 export interface Results {
@@ -40,6 +51,10 @@ export interface Results {
   winner?: string;
   roundInfo?: RankedRoundInfo;
   averageScores?: Record<string, number>;
+  average?: number;
+  median?: number;
+  consensus?: boolean;
+  passed?: boolean;
 }
 
 export interface RankedRoundInfo {
@@ -52,6 +67,7 @@ export interface CreateSessionPayload {
   title: string;
   votingMethod: VotingMethod;
   options: { name: string; description?: string }[];
+  config?: SessionConfig;
 }
 
 export interface JoinSessionPayload {

@@ -22,6 +22,11 @@ export interface ParsedSession {
   title?: string;
   votingMethod?: string;
   options: ParsedOption[];
+  config?: {
+    pokerMin?: number;
+    pokerMax?: number;
+    dotsPerVoter?: number;
+  };
 }
 
 export type ParseResult =
@@ -239,7 +244,7 @@ export function detectFormat(input: string): InputFormat {
 // Full session parsers (title + votingMethod + options from a single file)
 // ---------------------------------------------------------------------------
 
-const VALID_METHODS = ['single', 'approval', 'ranked', 'score'];
+const VALID_METHODS = ['single', 'approval', 'ranked', 'score', 'poker', 'dot', 'roman', 'fist-of-five'];
 
 /**
  * Parse a full session from JSON.
@@ -293,12 +298,23 @@ export function parseSessionJSON(input: string): SessionParseResult {
   const optResult = parseJSON(JSON.stringify(optionsRaw));
   if (!optResult.ok) return optResult;
 
+  // Extract config if present
+  let config: ParsedSession['config'];
+  if (obj.config && typeof obj.config === 'object') {
+    const c = obj.config as Record<string, unknown>;
+    config = {};
+    if (typeof c.pokerMin === 'number') config.pokerMin = c.pokerMin;
+    if (typeof c.pokerMax === 'number') config.pokerMax = c.pokerMax;
+    if (typeof c.dotsPerVoter === 'number') config.dotsPerVoter = c.dotsPerVoter;
+  }
+
   return {
     ok: true,
     session: {
       title: title || undefined,
       votingMethod: method || undefined,
       options: optResult.options,
+      config,
     },
   };
 }

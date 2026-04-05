@@ -1,6 +1,6 @@
 import React, { useRef, createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { Session, Results, Vote, UserInfo } from '../types';
+import { Session, SessionConfig, Results, Vote, UserInfo } from '../types';
 
 interface SocketContextType {
   socket: Socket | null;
@@ -10,7 +10,7 @@ interface SocketContextType {
   userName: string | null;
   results: Results | null;
   users: UserInfo[];
-  createSession: (title: string, votingMethod: string, options: { name: string; description?: string }[]) => void;
+  createSession: (title: string, votingMethod: string, options: { name: string; description?: string }[], config?: SessionConfig) => void;
   joinSession: (sessionId: string, userName: string, userId?: string) => void;
   submitVote: (sessionId: string, vote: Omit<Vote, 'id' | 'timestamp'>) => void;
   closeSession: (sessionId: string) => void;
@@ -140,8 +140,8 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const createSession = useCallback((title: string, votingMethod: string, options: { name: string; description?: string }[]) => {
-    socket?.emit('create-session', { title, votingMethod, options });
+  const createSession = useCallback((title: string, votingMethod: string, options: { name: string; description?: string }[], config?: SessionConfig) => {
+    socket?.emit('create-session', { title, votingMethod, options, config });
   }, [socket]);
 
   const joinSession = useCallback((sessionId: string, userName: string, existingUserId?: string) => {

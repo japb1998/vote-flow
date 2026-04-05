@@ -37,7 +37,8 @@ export class SqliteSessionStore implements SessionStore {
         creator_id TEXT NOT NULL,
         created_at INTEGER NOT NULL,
         closed_at INTEGER,
-        expires_at INTEGER NOT NULL
+        expires_at INTEGER NOT NULL,
+        config TEXT
       );
 
       CREATE TABLE IF NOT EXISTS users (
@@ -78,7 +79,6 @@ export class SqliteSessionStore implements SessionStore {
     const columns = await this.db.all("PRAGMA table_info(sessions)");
     const hasExpiresAt = columns.some((col: { name: string }) => col.name === 'expires_at');
     if (!hasExpiresAt) {
-      // Default: active sessions expire 24h from creation, closed sessions 30min from close
       await this.db.exec(`ALTER TABLE sessions ADD COLUMN expires_at INTEGER`);
       await this.db.run(
         `UPDATE sessions SET expires_at = CASE
@@ -87,6 +87,11 @@ export class SqliteSessionStore implements SessionStore {
          END`
       );
       await this.db.exec(`CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions (expires_at)`);
+    }
+
+    // Migration: add config column to existing databases
+    if (!columns.some((col: { name: string }) => col.name === 'config')) {
+      await this.db.exec('ALTER TABLE sessions ADD COLUMN config TEXT');
     }
   }
 
@@ -98,10 +103,11 @@ export class SqliteSessionStore implements SessionStore {
   async createSession(session: Session): Promise<void> {
     const db = this.getDb();
     await db.run(
-      `INSERT INTO sessions (id, title, status, voting_method, options, creator_id, created_at, expires_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO sessions (id, title, status, voting_method, options, creator_id, created_at, expires_at, config)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [session.id, session.title, session.status, session.votingMethod,
-       JSON.stringify(session.options), session.creatorId, session.createdAt, session.expiresAt]
+       JSON.stringify(session.options), session.creatorId, session.createdAt,
+       session.expiresAt, session.config ? JSON.stringify(session.config) : null]
     );
   }
 
@@ -127,7 +133,8 @@ export class SqliteSessionStore implements SessionStore {
       votes,
       creatorId: row.creator_id,
       closedAt: row.closed_at ?? undefined,
-      expiresAt: row.expires_at
+      expiresAt: row.expires_at,
+      config: row.config ? JSON.parse(row.config) : undefined
     };
   }
 

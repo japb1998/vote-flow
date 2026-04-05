@@ -1,5 +1,12 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Button } from './Button';
+// Code editor alternatives if more features needed:
+// - @uiw/react-codemirror (CodeMirror 6): full-featured, ~100KB
+// - @monaco-editor/react (VS Code editor): IDE-level, ~2MB
+import Editor from 'react-simple-code-editor';
+import Prism from 'prismjs';
+import 'prismjs/components/prism-json';
+import 'prismjs/components/prism-yaml';
 import {
   parseDelimitedText,
   parseJSON,
@@ -18,6 +25,8 @@ interface BulkOptionInputProps {
   onParse: (options: ParsedOption[]) => void;
   /** Called when a full session file is imported (title + method + options). */
   onSessionImport?: (session: ParsedSession) => void;
+  /** Current voting method — templates adapt to show relevant examples. */
+  votingMethod?: string;
 }
 
 const FORMAT_LABELS: Record<InputFormat, string> = {
@@ -26,29 +35,85 @@ const FORMAT_LABELS: Record<InputFormat, string> = {
   yaml: 'YAML',
 };
 
-const FORMAT_PLACEHOLDERS: Record<InputFormat, string> = {
+const DEFAULT_PLACEHOLDERS: Record<InputFormat, string> = {
   text: 'Option A, Option B, Option C\n\nOr one per line:\nOption A\nOption B\n\nUse \\, or \\; to escape delimiters',
   json: '["Option A", "Option B"]\n\nor full session:\n{\n  "title": "What to eat?",\n  "votingMethod": "ranked",\n  "options": ["Pizza", "Tacos"]\n}',
   yaml: '- Option A\n- Option B\n\nor full session:\ntitle: What to eat?\nvotingMethod: ranked\noptions:\n  - Pizza\n  - name: Tacos\n    description: Mexican food',
 };
 
-export function BulkOptionInput({ onParse, onSessionImport }: BulkOptionInputProps) {
+const METHOD_PLACEHOLDERS: Record<string, Record<InputFormat, string>> = {
+  dot: {
+    text: 'Feature A\nFeature B\nFeature C\nFeature D\n\nOne item per line — voters allocate dots across these',
+    json: '{\n  "title": "Sprint priorities",\n  "votingMethod": "dot",\n  "config": { "dotsPerVoter": 3 },\n  "options": [\n    { "name": "Auth refactor", "description": "Rewrite auth middleware" },\n    { "name": "API pagination", "description": "Add cursor pagination" },\n    { "name": "Dashboard redesign" }\n  ]\n}',
+    yaml: 'title: Sprint priorities\nvotingMethod: dot\nconfig:\n  dotsPerVoter: 3\noptions:\n  - name: Auth refactor\n    description: Rewrite auth middleware\n  - name: API pagination\n    description: Add cursor pagination\n  - Dashboard redesign',
+  },
+  poker: {
+    text: 'User login flow\nSearch feature\nCheckout redesign\nNotifications\n\nOne story/task per line — team estimates with Fibonacci cards',
+    json: '{\n  "title": "Sprint 12 estimation",\n  "votingMethod": "poker",\n  "config": { "pokerMin": 1, "pokerMax": 21 }\n}',
+    yaml: 'title: Sprint 12 estimation\nvotingMethod: poker\nconfig:\n  pokerMin: 1\n  pokerMax: 21',
+  },
+  roman: {
+    text: 'This method does not use options.\n\nImport a full session instead:\nUse JSON or YAML with title + votingMethod',
+    json: '{\n  "title": "Should we adopt TypeScript?",\n  "votingMethod": "roman"\n}',
+    yaml: 'title: Should we adopt TypeScript?\nvotingMethod: roman',
+  },
+  'fist-of-five': {
+    text: 'This method does not use options.\n\nImport a full session instead:\nUse JSON or YAML with title + votingMethod',
+    json: '{\n  "title": "Confidence in release plan",\n  "votingMethod": "fist-of-five"\n}',
+    yaml: 'title: Confidence in release plan\nvotingMethod: fist-of-five',
+  },
+  single: {
+    text: 'Option A, Option B, Option C\n\nOr one per line:\nOption A\nOption B',
+    json: '{\n  "title": "Best framework?",\n  "votingMethod": "single",\n  "options": ["React", "Vue", "Svelte"]\n}',
+    yaml: 'title: Best framework?\nvotingMethod: single\noptions:\n  - React\n  - Vue\n  - Svelte',
+  },
+  approval: {
+    text: 'Candidate A\nCandidate B\nCandidate C\n\nVoters approve all acceptable choices',
+    json: '{\n  "title": "Approved tech stack",\n  "votingMethod": "approval",\n  "options": ["PostgreSQL", "MongoDB", "DynamoDB"]\n}',
+    yaml: 'title: Approved tech stack\nvotingMethod: approval\noptions:\n  - PostgreSQL\n  - MongoDB\n  - DynamoDB',
+  },
+  ranked: {
+    text: 'Option A\nOption B\nOption C\n\nVoters rank all options by preference',
+    json: '{\n  "title": "Team offsite location",\n  "votingMethod": "ranked",\n  "options": ["Beach house", "Mountain cabin", "City hotel"]\n}',
+    yaml: 'title: Team offsite location\nvotingMethod: ranked\noptions:\n  - Beach house\n  - Mountain cabin\n  - City hotel',
+  },
+  score: {
+    text: 'Option A\nOption B\nOption C\n\nVoters rate each option from 1-5',
+    json: '{\n  "title": "Rate the proposals",\n  "votingMethod": "score",\n  "options": [\n    { "name": "Proposal A", "description": "Incremental approach" },\n    { "name": "Proposal B", "description": "Full rewrite" }\n  ]\n}',
+    yaml: 'title: Rate the proposals\nvotingMethod: score\noptions:\n  - name: Proposal A\n    description: Incremental approach\n  - name: Proposal B\n    description: Full rewrite',
+  },
+};
+
+function getPlaceholders(votingMethod?: string): Record<InputFormat, string> {
+  if (votingMethod && METHOD_PLACEHOLDERS[votingMethod]) {
+    return METHOD_PLACEHOLDERS[votingMethod];
+  }
+  return DEFAULT_PLACEHOLDERS;
+}
+
+export function BulkOptionInput({ onParse, onSessionImport, votingMethod }: BulkOptionInputProps) {
   const [format, setFormat] = useState<InputFormat>('text');
   const [value, setValue] = useState('');
   const [error, setError] = useState('');
   const [preview, setPreview] = useState<ParsedOption[]>([]);
-  const [sessionMeta, setSessionMeta] = useState<{ title?: string; votingMethod?: string } | null>(null);
+  const [sessionMeta, setSessionMeta] = useState<{ title?: string; votingMethod?: string; config?: ParsedSession['config'] } | null>(null);
   const [dragOver, setDragOver] = useState(false);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Auto-resize textarea
-  const autoResize = useCallback(() => {
-    const ta = textareaRef.current;
-    if (!ta) return;
-    ta.style.height = 'auto';
-    ta.style.height = Math.min(ta.scrollHeight, 320) + 'px';
-  }, []);
+  // Syntax highlighting via Prism
+  const highlightCode = useCallback((code: string) => {
+    if (format === 'json') {
+      return Prism.highlight(code, Prism.languages.json, 'json');
+    }
+    if (format === 'yaml') {
+      return Prism.highlight(code, Prism.languages.yaml, 'yaml');
+    }
+    // Plain text — escape HTML
+    return code
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }, [format]);
 
   // Parse on every change for live preview
   useEffect(() => {
@@ -81,6 +146,7 @@ export function BulkOptionInput({ onParse, onSessionImport }: BulkOptionInputPro
           setSessionMeta({
             title: sessionResult.session.title,
             votingMethod: sessionResult.session.votingMethod,
+            config: sessionResult.session.config,
           });
         } else {
           setSessionMeta(null);
@@ -105,9 +171,18 @@ export function BulkOptionInput({ onParse, onSessionImport }: BulkOptionInputPro
             if (trimmed.startsWith('{')) {
               const obj = JSON.parse(trimmed);
               if (obj.title || obj.votingMethod) {
+                let config: ParsedSession['config'];
+                if (obj.config && typeof obj.config === 'object') {
+                  const c = obj.config as Record<string, unknown>;
+                  config = {};
+                  if (typeof c.pokerMin === 'number') config.pokerMin = c.pokerMin;
+                  if (typeof c.pokerMax === 'number') config.pokerMax = c.pokerMax;
+                  if (typeof c.dotsPerVoter === 'number') config.dotsPerVoter = c.dotsPerVoter;
+                }
                 setSessionMeta({
                   title: typeof obj.title === 'string' ? obj.title : undefined,
                   votingMethod: typeof obj.votingMethod === 'string' ? obj.votingMethod : undefined,
+                  config,
                 });
               } else {
                 setSessionMeta(null);
@@ -137,8 +212,6 @@ export function BulkOptionInput({ onParse, onSessionImport }: BulkOptionInputPro
       const detected = detectFormat(newValue);
       if (detected !== 'text') setFormat(detected);
     }
-
-    autoResize();
   };
 
   const handleFileUpload = (file: File) => {
@@ -162,11 +235,11 @@ export function BulkOptionInput({ onParse, onSessionImport }: BulkOptionInputPro
           setSessionMeta({
             title: sessionResult.session.title,
             votingMethod: sessionResult.session.votingMethod,
+            config: sessionResult.session.config,
           });
         }
 
         setError('');
-        autoResize();
       } else {
         setError(sessionResult.error);
       }
@@ -190,6 +263,7 @@ export function BulkOptionInput({ onParse, onSessionImport }: BulkOptionInputPro
         title: sessionMeta.title,
         votingMethod: sessionMeta.votingMethod,
         options: preview,
+        config: sessionMeta.config,
       });
     } else {
       onParse(preview);
@@ -201,18 +275,29 @@ export function BulkOptionInput({ onParse, onSessionImport }: BulkOptionInputPro
 
   return (
     <div className={styles.container}>
-      {/* Format tabs */}
-      <div className={styles.tabs}>
-        {(Object.keys(FORMAT_LABELS) as InputFormat[]).map((f) => (
+      {/* Format tabs + load template */}
+      <div className={styles.tabBar}>
+        <div className={styles.tabs}>
+          {(Object.keys(FORMAT_LABELS) as InputFormat[]).map((f) => (
+            <button
+              key={f}
+              className={`${styles.tab} ${format === f ? styles.tabActive : ''}`}
+              onClick={() => setFormat(f)}
+              type="button"
+            >
+              {FORMAT_LABELS[f]}
+            </button>
+          ))}
+        </div>
+        {!value.trim() && (
           <button
-            key={f}
-            className={`${styles.tab} ${format === f ? styles.tabActive : ''}`}
-            onClick={() => setFormat(f)}
+            className={styles.templateBtn}
+            onClick={() => handleChange(getPlaceholders(votingMethod)[format])}
             type="button"
           >
-            {FORMAT_LABELS[f]}
+            Load template
           </button>
-        ))}
+        )}
       </div>
 
       {/* Textarea with drop zone */}
@@ -222,13 +307,19 @@ export function BulkOptionInput({ onParse, onSessionImport }: BulkOptionInputPro
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
       >
-        <textarea
-          ref={textareaRef}
-          className={styles.textarea}
+        <Editor
           value={value}
-          onChange={(e) => handleChange(e.target.value)}
-          placeholder={FORMAT_PLACEHOLDERS[format]}
-          rows={3}
+          onValueChange={handleChange}
+          highlight={highlightCode}
+          placeholder={getPlaceholders(votingMethod)[format]}
+          className={styles.editor}
+          textareaClassName={styles.editorTextarea}
+          padding={12}
+          style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: '0.875rem',
+            lineHeight: '1.6',
+          }}
         />
         {dragOver && (
           <div className={styles.dropOverlay}>
