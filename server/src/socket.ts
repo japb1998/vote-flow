@@ -11,9 +11,8 @@ import {
 import { generateSessionId, sanitizeInput, sanitizeOptionName, sanitizeOptionDescription, validateSessionPayload, canCreateSession, canJoinSession } from './utils/helpers';
 import { calculateResults } from './voting/calculate';
 import { SessionStore } from './store';
+import { ACTIVE_SESSION_TTL, CLOSED_SESSION_TTL } from './config/ttl';
 
-const ACTIVE_SESSION_TTL = parseInt(process.env.ACTIVE_SESSION_TTL ?? '', 10) || 24 * 60 * 60 * 1000; // 24 hours
-const CLOSED_SESSION_TTL = parseInt(process.env.CLOSED_SESSION_TTL ?? '', 10) || 30 * 60 * 1000;     // 30 minutes
 
 export function setupSocketHandlers(io: Server, store: SessionStore): void {
   io.on('connection', (socket: Socket) => {

@@ -3,6 +3,7 @@ import { open, Database } from 'sqlite';
 import path from 'path';
 import { Session, Vote, Option, Selection, VotingMethod } from '../types';
 import { SessionStore, UserInfo } from './interface';
+import { ACTIVE_SESSION_TTL, CLOSED_SESSION_TTL } from '../config/ttl';
 
 export class SqliteSessionStore implements SessionStore {
   private db: Database | null = null;
@@ -71,23 +72,26 @@ export class SqliteSessionStore implements SessionStore {
       CREATE INDEX IF NOT EXISTS idx_votes_session_id ON votes (session_id);
       CREATE INDEX IF NOT EXISTS idx_sessions_status ON sessions (status);
       CREATE INDEX IF NOT EXISTS idx_sessions_closed_at ON sessions (closed_at);
-      CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions (expires_at);
     `);
 
-    // Migration: add expires_at column to existing databases
-    const columns = await this.db.all("PRAGMA table_info(sessions)");
-    const hasExpiresAt = columns.some((col: { name: string }) => col.name === 'expires_at');
-    if (!hasExpiresAt) {
-      // Default: active sessions expire 24h from creation, closed sessions 30min from close
-      await this.db.exec(`ALTER TABLE sessions ADD COLUMN expires_at INTEGER`);
+    // Migration: back-fill expires_at on databases created before TTL support.
+    // Must run before the expires_at index is created — on a pre-TTL database the
+    // CREATE TABLE above is a no-op, so the column does not exist yet.
+    const columns = await this.db.all('PRAGMA table_info(sessions)');
+    if (!columns.some((col: { name: string }) => col.name === 'expires_at')) {
+      await this.db.exec('ALTER TABLE sessions ADD COLUMN expires_at INTEGER');
       await this.db.run(
         `UPDATE sessions SET expires_at = CASE
-           WHEN closed_at IS NOT NULL THEN closed_at + 1800000
-           ELSE created_at + 86400000
-         END`
+           WHEN closed_at IS NOT NULL THEN closed_at + ?
+           ELSE created_at + ?
+         END`,
+        [CLOSED_SESSION_TTL, ACTIVE_SESSION_TTL]
       );
-      await this.db.exec(`CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions (expires_at)`);
     }
+
+    await this.db.exec(
+      'CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions (expires_at)'
+    );
   }
 
   private getDb(): Database {
