@@ -1,34 +1,43 @@
 import { Vote, Results } from '../types';
 
 export function calculateSingleChoice(votes: Vote[], optionIds: string[]): Results {
+  const validIds = new Set(optionIds);
   const totals: Record<string, number> = {};
-  optionIds.forEach(id => totals[id] = 0);
+  validIds.forEach(id => {
+    totals[id] = 0;
+  });
 
+  let totalValidVotes = 0;
   votes.forEach(vote => {
     if (vote.selection.type === 'single') {
       const optionId = vote.selection.optionId;
-      if (totals[optionId] !== undefined) {
+      if (
+        typeof optionId === 'string' &&
+        validIds.has(optionId) &&
+        Object.prototype.hasOwnProperty.call(totals, optionId)
+      ) {
         totals[optionId]++;
+        totalValidVotes++;
       }
     }
   });
 
-  const totalVotes = votes.length;
   const percentages: Record<string, number> = {};
-  let winner: string | undefined;
-
   let maxVotes = 0;
-  optionIds.forEach(id => {
-    percentages[id] = totalVotes > 0 ? (totals[id] / totalVotes) * 100 : 0;
-    if (totals[id] > maxVotes) {
-      maxVotes = totals[id];
-      winner = id;
+  let topOptions: string[] = [];
+
+  validIds.forEach(id => {
+    const count = totals[id];
+    percentages[id] = totalValidVotes > 0 ? (count / totalValidVotes) * 100 : 0;
+    if (count > maxVotes) {
+      maxVotes = count;
+      topOptions = [id];
+    } else if (count === maxVotes && maxVotes > 0) {
+      topOptions.push(id);
     }
   });
 
-  if (totalVotes > 0 && maxVotes / totalVotes <= 0.5) {
-    winner = undefined;
-  }
+  const winner = maxVotes > 0 && topOptions.length === 1 ? topOptions[0] : undefined;
 
   return { method: 'single', totals, percentages, winner };
 }

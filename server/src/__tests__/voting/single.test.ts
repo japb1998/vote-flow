@@ -35,13 +35,32 @@ describe('calculateSingleChoice', () => {
     expect(result.percentages.opt1).toBe(75);
   });
 
-  it('does not declare a winner at exactly 50%', () => {
+  it('does not declare a winner on a 50/50 tie', () => {
     const votes = [
       makeVote('opt1', 'u1'),
       makeVote('opt2', 'u2'),
     ];
     const result = calculateSingleChoice(votes, OPTIONS);
     expect(result.winner).toBeUndefined();
+  });
+
+  it('declares a plurality winner with <50% when strictly leading (40/30/30)', () => {
+    const votes = [
+      makeVote('opt1', 'u1'),
+      makeVote('opt1', 'u2'),
+      makeVote('opt1', 'u3'),
+      makeVote('opt1', 'u4'),
+      makeVote('opt2', 'u5'),
+      makeVote('opt2', 'u6'),
+      makeVote('opt2', 'u7'),
+      makeVote('opt3', 'u8'),
+      makeVote('opt3', 'u9'),
+      makeVote('opt3', 'u10'),
+    ];
+    const result = calculateSingleChoice(votes, OPTIONS);
+    expect(result.totals).toEqual({ opt1: 4, opt2: 3, opt3: 3 });
+    expect(result.percentages).toEqual({ opt1: 40, opt2: 30, opt3: 30 });
+    expect(result.winner).toBe('opt1');
   });
 
   it('does not declare a winner when votes are split three ways', () => {
@@ -58,6 +77,32 @@ describe('calculateSingleChoice', () => {
     const votes = [makeVote('unknown', 'u1')];
     const result = calculateSingleChoice(votes, OPTIONS);
     expect(result.totals).toEqual({ opt1: 0, opt2: 0, opt3: 0 });
+    expect(result.percentages).toEqual({ opt1: 0, opt2: 0, opt3: 0 });
+    expect(result.winner).toBeUndefined();
+  });
+
+  it('ignores prototype property keys like toString, constructor, and __proto__', () => {
+    const votes = [
+      makeVote('toString', 'u1'),
+      makeVote('constructor', 'u2'),
+      makeVote('valueOf', 'u3'),
+      makeVote('__proto__', 'u4'),
+    ];
+    const result = calculateSingleChoice(votes, OPTIONS);
+    expect(result.totals).toEqual({ opt1: 0, opt2: 0, opt3: 0 });
+    expect(result.percentages).toEqual({ opt1: 0, opt2: 0, opt3: 0 });
+    expect(result.winner).toBeUndefined();
+  });
+
+  it('computes percentages from valid votes when unknown votes are present', () => {
+    const votes = [
+      makeVote('opt1', 'u1'),
+      makeVote('unknown', 'u2'),
+    ];
+    const result = calculateSingleChoice(votes, OPTIONS);
+    expect(result.totals).toEqual({ opt1: 1, opt2: 0, opt3: 0 });
+    expect(result.percentages).toEqual({ opt1: 100, opt2: 0, opt3: 0 });
+    expect(result.winner).toBe('opt1');
   });
 
   it('ignores votes with wrong selection type', () => {
@@ -67,9 +112,10 @@ describe('calculateSingleChoice', () => {
     };
     const result = calculateSingleChoice([vote], OPTIONS);
     expect(result.totals).toEqual({ opt1: 0, opt2: 0, opt3: 0 });
+    expect(result.winner).toBeUndefined();
   });
 
-  it('calculates correct percentages', () => {
+  it('calculates correct percentages and plurality winner', () => {
     const votes = [
       makeVote('opt1', 'u1'),
       makeVote('opt1', 'u2'),
@@ -80,5 +126,6 @@ describe('calculateSingleChoice', () => {
     expect(result.percentages.opt1).toBe(50);
     expect(result.percentages.opt2).toBe(25);
     expect(result.percentages.opt3).toBe(25);
+    expect(result.winner).toBe('opt1');
   });
 });

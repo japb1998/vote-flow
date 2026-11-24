@@ -154,6 +154,46 @@
   color: var(--color-on-primary);
 }
 
+.importToggleBtn {
+  padding: var(--space-xs) var(--space-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--shape-full);
+  background: var(--color-surface-container);
+  color: var(--color-text);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  white-space: nowrap;
+  min-height: 30px;
+  transition:
+    background var(--duration-short) var(--spring-effect-fast),
+    border-color var(--duration-short) var(--spring-effect-fast),
+    color var(--duration-short) var(--spring-effect-fast),
+    transform var(--duration-medium) var(--spring-spatial);
+}
+
+.importToggleBtn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.importToggleBtn:active {
+  transform: scale(0.96);
+}
+
+.importToggleBtnActive {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+.importToggleBtnActive:hover {
+  background: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
+  color: var(--color-on-primary);
+}
+
 /* Option rows: full-width, inputs and button match */
 .optionRow {
   display: flex;

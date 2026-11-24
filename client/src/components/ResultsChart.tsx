@@ -20,6 +20,8 @@ export function ResultsChart({ results, options }: ResultsChartProps) {
     }
   };
 
+  const hasVotes = Object.values(results.totals).some(v => v > 0);
+
   // For non-option methods, build entries from totals keys
   const isOptionBased = options.length > 0;
   const entries: { key: string; label: string }[] = isOptionBased
@@ -37,7 +39,7 @@ export function ResultsChart({ results, options }: ResultsChartProps) {
         const total = results.totals[key] || 0;
         const percentage = results.percentages[key] || 0;
         const averageScore = results.averageScores?.[key];
-        const isWinner = results.winner === key;
+        const isWinner = hasVotes && results.winner === key;
 
         return (
           <div key={key} className={`${styles.bar} ${isWinner ? styles.winner : ''}`}>
@@ -66,7 +68,11 @@ export function ResultsChart({ results, options }: ResultsChartProps) {
         );
       })}
 
-      {results.roundInfo && (
+      {!hasVotes && (
+        <p className={styles.emptyState}>No votes cast yet</p>
+      )}
+
+      {hasVotes && results.roundInfo && (
         <div className={styles.roundInfo}>
           <h4>Round {results.roundInfo.round}</h4>
           {results.roundInfo.eliminated && (
@@ -76,7 +82,7 @@ export function ResultsChart({ results, options }: ResultsChartProps) {
       )}
 
       {/* Summary stats for poker / fist-of-five */}
-      {(results.method === 'poker' || results.method === 'fist-of-five') && (
+      {hasVotes && (results.method === 'poker' || results.method === 'fist-of-five') && (
         <div className={styles.summaryStats}>
           {results.average !== undefined && (
             <div className={styles.stat}>
@@ -102,7 +108,7 @@ export function ResultsChart({ results, options }: ResultsChartProps) {
       )}
 
       {/* Roman voting result */}
-      {results.method === 'roman' && results.passed !== undefined && (
+      {hasVotes && results.method === 'roman' && results.passed !== undefined && (
         <div className={styles.summaryStats}>
           <div className={styles.stat}>
             <span className={styles.statLabel}>Result</span>

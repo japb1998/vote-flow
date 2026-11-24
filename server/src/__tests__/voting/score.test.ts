@@ -19,8 +19,7 @@ describe('calculateScore', () => {
     expect(result.method).toBe('score');
     expect(result.totals).toEqual({ opt1: 0, opt2: 0, opt3: 0 });
     expect(result.averageScores).toEqual({ opt1: 0, opt2: 0, opt3: 0 });
-    // All averages are 0, so first option wins the tiebreak by iteration order
-    expect(result.winner).toBe('opt1');
+    expect(result.winner).toBeUndefined();
   });
 
   it('calculates totals and averages correctly', () => {
@@ -44,6 +43,16 @@ describe('calculateScore', () => {
     expect(result.winner).toBe('opt1');
   });
 
+  it('returns undefined winner when top options tie for highest average score', () => {
+    const votes = [
+      makeVote({ opt1: 5, opt2: 4, opt3: 2 }, 'u1'),
+      makeVote({ opt1: 4, opt2: 5, opt3: 2 }, 'u2'),
+    ];
+    const result = calculateScore(votes, OPTIONS);
+    expect(result.averageScores).toEqual({ opt1: 4.5, opt2: 4.5, opt3: 2 });
+    expect(result.winner).toBeUndefined();
+  });
+
   it('calculates percentages relative to max possible score (voters * 5)', () => {
     const votes = [
       makeVote({ opt1: 5, opt2: 5, opt3: 5 }, 'u1'),
@@ -52,6 +61,7 @@ describe('calculateScore', () => {
     // max possible = 1 * 5 = 5
     expect(result.percentages.opt1).toBe(100);
     expect(result.percentages.opt2).toBe(100);
+    expect(result.winner).toBeUndefined();
   });
 
   it('handles partial scoring (not all options scored)', () => {
@@ -63,12 +73,38 @@ describe('calculateScore', () => {
     expect(result.totals.opt2).toBe(0);
     expect(result.averageScores!.opt1).toBe(3);
     expect(result.averageScores!.opt2).toBe(0);
+    expect(result.winner).toBe('opt1');
   });
 
   it('ignores scores for unknown option IDs', () => {
     const votes = [makeVote({ unknown: 5 }, 'u1')];
     const result = calculateScore(votes, OPTIONS);
     expect(result.totals).toEqual({ opt1: 0, opt2: 0, opt3: 0 });
+    expect(result.winner).toBeUndefined();
+  });
+
+  it('ignores prototype property keys like toString and constructor', () => {
+    const votes = [
+      makeVote({ toString: 5, constructor: 4, valueOf: 3 } as Record<string, number>, 'u1'),
+    ];
+    const result = calculateScore(votes, OPTIONS);
+    expect(result.totals).toEqual({ opt1: 0, opt2: 0, opt3: 0 });
+    expect(result.averageScores).toEqual({ opt1: 0, opt2: 0, opt3: 0 });
+    expect(result.winner).toBeUndefined();
+  });
+
+  it('ignores non-finite and non-numeric score values', () => {
+    const votes = [
+      makeVote({
+        opt1: Number.NaN,
+        opt2: Number.POSITIVE_INFINITY,
+        opt3: '5' as unknown as number,
+      }, 'u1'),
+    ];
+    const result = calculateScore(votes, OPTIONS);
+    expect(result.totals).toEqual({ opt1: 0, opt2: 0, opt3: 0 });
+    expect(result.averageScores).toEqual({ opt1: 0, opt2: 0, opt3: 0 });
+    expect(result.winner).toBeUndefined();
   });
 
   it('ignores votes with wrong selection type', () => {
@@ -78,5 +114,6 @@ describe('calculateScore', () => {
     };
     const result = calculateScore([vote], OPTIONS);
     expect(result.totals).toEqual({ opt1: 0, opt2: 0, opt3: 0 });
+    expect(result.winner).toBeUndefined();
   });
 });

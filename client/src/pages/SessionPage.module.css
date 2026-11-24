@@ -11,10 +11,13 @@
 
 .loading {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: var(--space-md);
   min-height: 100vh;
   color: var(--color-text-muted);
+  text-align: center;
 }
 
 .errorState {
@@ -241,14 +244,34 @@
   color: white;
 }
 
+.rankNumberUnranked {
+  background-color: var(--color-surface-container);
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+}
+
 .scoreNumber {
   background-color: var(--color-score);
   color: white;
 }
 
-.optionName {
+.optionText {
   flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.optionName {
   font-weight: 500;
+  overflow-wrap: break-word;
+}
+
+.optionDesc {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  overflow-wrap: break-word;
 }
 
 .scoreButtons {
@@ -329,6 +352,7 @@
   border: 2px solid var(--color-border);
   border-radius: var(--shape-md);
   background: var(--color-bg);
+  color: var(--color-text);
   font-size: 1.25rem;
   font-weight: 700;
   cursor: pointer;
@@ -385,6 +409,7 @@
   border: 2px solid var(--color-border);
   border-radius: var(--shape-lg);
   background: var(--color-bg);
+  color: var(--color-text);
   cursor: pointer;
   min-width: 100px;
   transition:
@@ -440,6 +465,7 @@
   border: 2px solid var(--color-border);
   border-radius: var(--shape-md);
   background: var(--color-bg);
+  color: var(--color-text);
   cursor: pointer;
   text-align: left;
   transition:
@@ -473,6 +499,7 @@
   font-weight: 700;
   font-size: 1.125rem;
   background-color: var(--color-surface-container);
+  color: var(--color-text);
   flex-shrink: 0;
   transition: background-color var(--duration-short) var(--spring-effect-fast);
 }
@@ -503,16 +530,23 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: var(--space-md);
   padding: var(--space-md) var(--space-lg);
   background-color: var(--color-bg);
   border: 1px solid var(--color-border);
   border-radius: var(--shape-md);
 }
 
-.dotRowName {
-  font-weight: 500;
+.dotRowInfo {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dotRowName {
+  font-weight: 500;
   overflow-wrap: break-word;
 }
 
@@ -529,6 +563,7 @@
   border: 2px solid var(--color-border);
   border-radius: 50%;
   background: transparent;
+  color: var(--color-text);
   font-size: 1.25rem;
   font-weight: 700;
   cursor: pointer;

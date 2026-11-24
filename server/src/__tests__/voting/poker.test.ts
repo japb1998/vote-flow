@@ -40,6 +40,7 @@ describe('calculatePoker', () => {
     expect(result.average).toBeUndefined();
     expect(result.median).toBeUndefined();
     expect(result.consensus).toBe(false);
+    expect(result.winner).toBeUndefined();
   });
 
   it('calculates average and median for Fibonacci cards', () => {
@@ -53,6 +54,7 @@ describe('calculatePoker', () => {
     expect(result.average).toBeCloseTo(5.333, 2);
     // sorted: [3,5,8] → median = 5
     expect(result.median).toBe(5);
+    expect(result.winner).toBeUndefined();
   });
 
   it('detects consensus when all voters pick the same card', () => {
@@ -68,13 +70,14 @@ describe('calculatePoker', () => {
     expect(result.median).toBe(5);
   });
 
-  it('reports no consensus when voters disagree', () => {
+  it('reports no consensus and undefined winner when voters tie', () => {
     const votes = [
       makeVote('1', 'u1'),
       makeVote('13', 'u2'),
     ];
     const result = calculatePoker(votes);
     expect(result.consensus).toBe(false);
+    expect(result.winner).toBeUndefined();
   });
 
   it('picks the most-voted card as winner', () => {
@@ -108,7 +111,7 @@ describe('calculatePoker', () => {
     expect(Object.keys(result.totals)).toEqual(['3', '5', '8', '13']);
   });
 
-  it('ignores votes for cards outside the configured range', () => {
+  it('ignores votes for cards outside the configured range and bases percentages on valid votes', () => {
     const config = { pokerMin: 3, pokerMax: 13 };
     const votes = [
       makeVote('1', 'u1'),   // below range — ignored
@@ -119,6 +122,23 @@ describe('calculatePoker', () => {
     expect(result.totals['5']).toBe(1);
     expect(result.totals['1']).toBeUndefined();
     expect(result.totals['21']).toBeUndefined();
+    expect(result.percentages['5']).toBe(100);
+    expect(result.consensus).toBe(true);
+    expect(result.winner).toBe('5');
+  });
+
+  it('ignores prototype property keys like toString and constructor', () => {
+    const votes = [
+      makeVote('toString', 'u1'),
+      makeVote('constructor', 'u2'),
+      makeVote('__proto__', 'u3'),
+    ];
+    const result = calculatePoker(votes);
+    expect(result.average).toBeUndefined();
+    expect(result.median).toBeUndefined();
+    expect(result.consensus).toBe(false);
+    expect(result.winner).toBeUndefined();
+    expect(Object.values(result.totals).every(v => v === 0)).toBe(true);
   });
 
   it('handles median with even number of votes', () => {
@@ -128,5 +148,6 @@ describe('calculatePoker', () => {
     ];
     const result = calculatePoker(votes);
     expect(result.median).toBe(5.5); // (3+8)/2
+    expect(result.winner).toBeUndefined();
   });
 });

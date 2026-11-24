@@ -19,6 +19,7 @@ describe('calculateFistOfFive', () => {
     expect(result.average).toBeUndefined();
     expect(result.median).toBeUndefined();
     expect(result.consensus).toBe(false);
+    expect(result.winner).toBeUndefined();
   });
 
   it('calculates average and median correctly', () => {
@@ -30,6 +31,7 @@ describe('calculateFistOfFive', () => {
     const result = calculateFistOfFive(votes);
     expect(result.average).toBe(4);
     expect(result.median).toBe(4);
+    expect(result.winner).toBeUndefined();
   });
 
   it('reports consensus when all votes are 3 or above', () => {
@@ -62,7 +64,7 @@ describe('calculateFistOfFive', () => {
     expect(result.consensus).toBe(false);
   });
 
-  it('counts distribution correctly', () => {
+  it('counts distribution correctly and returns undefined winner on a tie', () => {
     const votes = [
       makeVote(3, 'u1'),
       makeVote(3, 'u2'),
@@ -72,6 +74,7 @@ describe('calculateFistOfFive', () => {
     ];
     const result = calculateFistOfFive(votes);
     expect(result.totals).toEqual({ '1': 0, '2': 0, '3': 2, '4': 1, '5': 2 });
+    expect(result.winner).toBeUndefined();
   });
 
   it('picks the most-voted level as winner', () => {
@@ -85,7 +88,7 @@ describe('calculateFistOfFive', () => {
     expect(result.winner).toBe('4');
   });
 
-  it('calculates percentages based on total voters', () => {
+  it('calculates percentages based on valid voters', () => {
     const votes = [
       makeVote(3, 'u1'),
       makeVote(4, 'u2'),
@@ -105,6 +108,7 @@ describe('calculateFistOfFive', () => {
     ];
     const result = calculateFistOfFive(votes);
     expect(result.median).toBe(3); // (2+4)/2
+    expect(result.winner).toBeUndefined();
   });
 
   it('handles unanimous vote', () => {
@@ -120,12 +124,33 @@ describe('calculateFistOfFive', () => {
     expect(result.winner).toBe('5');
   });
 
-  it('ignores votes with wrong selection type', () => {
-    const vote: Vote = {
+  it('ignores prototype property keys like toString and constructor and reports no consensus', () => {
+    const votes = [
+      makeVote('toString' as unknown as 1, 'u1'),
+      makeVote('constructor' as unknown as 1, 'u2'),
+      makeVote('__proto__' as unknown as 1, 'u3'),
+    ];
+    const result = calculateFistOfFive(votes);
+    expect(result.totals).toEqual({ '1': 0, '2': 0, '3': 0, '4': 0, '5': 0 });
+    expect(result.average).toBeUndefined();
+    expect(result.median).toBeUndefined();
+    expect(result.consensus).toBe(false);
+    expect(result.winner).toBeUndefined();
+  });
+
+  it('ignores votes with wrong selection type and bases consensus/percentages on valid votes', () => {
+    const invalidVote: Vote = {
       id: 'v1', userId: 'u1', userName: 'u1', timestamp: Date.now(),
       selection: { type: 'single', optionId: 'opt1' },
     };
-    const result = calculateFistOfFive([vote]);
-    expect(result.totals).toEqual({ '1': 0, '2': 0, '3': 0, '4': 0, '5': 0 });
+    const resultOnlyInvalid = calculateFistOfFive([invalidVote]);
+    expect(resultOnlyInvalid.totals).toEqual({ '1': 0, '2': 0, '3': 0, '4': 0, '5': 0 });
+    expect(resultOnlyInvalid.consensus).toBe(false);
+    expect(resultOnlyInvalid.winner).toBeUndefined();
+
+    const resultMixed = calculateFistOfFive([invalidVote, makeVote(4, 'u2')]);
+    expect(resultMixed.percentages['4']).toBe(100);
+    expect(resultMixed.consensus).toBe(true);
+    expect(resultMixed.winner).toBe('4');
   });
 });

@@ -64,6 +64,37 @@ describe('calculateApproval', () => {
     const votes = [makeVote(['opt1', 'opt2', 'opt3'], 'u1')];
     const result = calculateApproval(votes, OPTIONS);
     expect(result.totals).toEqual({ opt1: 1, opt2: 1, opt3: 1 });
+    expect(result.winner).toBeUndefined();
+  });
+
+  it('deduplicates duplicate option IDs within a single vote', () => {
+    const votes = [
+      makeVote(['opt1', 'opt1', 'opt1'], 'u1'),
+      makeVote(['opt2', 'opt2'], 'u2'),
+    ];
+    const result = calculateApproval(votes, OPTIONS);
+    expect(result.totals).toEqual({ opt1: 1, opt2: 1, opt3: 0 });
+    expect(result.percentages).toEqual({ opt1: 50, opt2: 50, opt3: 0 });
+    expect(result.winner).toBeUndefined();
+  });
+
+  it('returns undefined winner when top options tie for highest approvals', () => {
+    const votes = [
+      makeVote(['opt1', 'opt2'], 'u1'),
+      makeVote(['opt1', 'opt2', 'opt3'], 'u2'),
+    ];
+    const result = calculateApproval(votes, OPTIONS);
+    expect(result.totals).toEqual({ opt1: 2, opt2: 2, opt3: 1 });
+    expect(result.winner).toBeUndefined();
+  });
+
+  it('ignores prototype property keys like toString and constructor', () => {
+    const votes = [
+      makeVote(['toString', 'constructor', '__proto__', 'valueOf'], 'u1'),
+    ];
+    const result = calculateApproval(votes, OPTIONS);
+    expect(result.totals).toEqual({ opt1: 0, opt2: 0, opt3: 0 });
+    expect(result.winner).toBeUndefined();
   });
 
   it('ignores votes with wrong selection type', () => {
@@ -73,5 +104,6 @@ describe('calculateApproval', () => {
     };
     const result = calculateApproval([vote], OPTIONS);
     expect(result.totals).toEqual({ opt1: 0, opt2: 0, opt3: 0 });
+    expect(result.winner).toBeUndefined();
   });
 });

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
@@ -9,12 +9,13 @@ import { VotingMethodInfo, VotingMethodInfoStandalone } from '../components/Voti
 import { BulkOptionInput } from '../components/BulkOptionInput';
 import { HeroLogo } from '../components/HeroLogo';
 import { VotingMethod, SessionConfig } from '../types';
-
-const FIBONACCI_SEQUENCE = [1, 2, 3, 5, 8, 13, 21, 34, 55, 89];
-import type { ParsedOption } from '../utils/optionParsers';
+import type { ParsedOption, ParsedSession } from '../utils/optionParsers';
 import styles from './HomePage.module.css';
 
+const FIBONACCI_SEQUENCE = [1, 2, 3, 5, 8, 13, 21, 34, 55, 89];
+const VALID_METHODS: VotingMethod[] = ['single', 'approval', 'ranked', 'score', 'poker', 'dot', 'roman', 'fist-of-five'];
 const NO_OPTIONS_METHODS: VotingMethod[] = ['poker', 'roman', 'fist-of-five'];
+const MAX_OPTIONS = 20;
 
 interface OptionInput {
   name: string;
@@ -23,7 +24,7 @@ interface OptionInput {
 
 export function HomePage() {
   const navigate = useNavigate();
-  const { currentSession, error } = useSocket();
+  const { currentSession, error, createSession, joinSession } = useSocket();
   const [joinSessionId, setJoinSessionId] = useState('');
   const [userName, setUserName] = useState('');
   const [showCreate, setShowCreate] = useState(false);
@@ -37,14 +38,19 @@ export function HomePage() {
   const [pokerMin, setPokerMin] = useState(1);
   const [pokerMax, setPokerMax] = useState(89);
   const [dotsPerVoter, setDotsPerVoter] = useState(3);
-
-  const { createSession, joinSession } = useSocket();
+  const pendingNavRef = useRef(false);
 
   const needsOptions = !NO_OPTIONS_METHODS.includes(votingMethod);
+  const trimmedJoinId = joinSessionId.trim();
+  const trimmedUserName = userName.trim();
 
   const handleCreate = () => {
-    if (!sessionTitle.trim()) return;
-    const validOptions = options.filter(o => o.name.trim());
+    const trimmedTitle = sessionTitle.trim();
+    if (!trimmedTitle) return;
+    const validOptions = options
+      .filter(o => o.name.trim())
+      .slice(0, MAX_OPTIONS)
+      .map(o => ({ name: o.name.trim(), description: o.description.trim() }));
     if (needsOptions && validOptions.length < 2) return;
 
     let config: SessionConfig | undefined;
@@ -54,21 +60,33 @@ export function HomePage() {
       config = { dotsPerVoter };
     }
 
-    createSession(sessionTitle, votingMethod, needsOptions ? validOptions : [], config);
+    pendingNavRef.current = true;
+    createSession(trimmedTitle, votingMethod, needsOptions ? validOptions : [], config);
   };
 
   const handleJoin = () => {
-    if (!joinSessionId.trim() || !userName.trim()) return;
-    joinSession(joinSessionId.toUpperCase(), userName);
+    const normalizedId = joinSessionId.trim().toUpperCase();
+    const cleanName = userName.trim();
+    if (normalizedId.length !== 6 || !cleanName) return;
+    pendingNavRef.current = true;
+    joinSession(normalizedId, cleanName);
   };
 
-  React.useEffect(() => {
-    if (currentSession) {
+  useEffect(() => {
+    if (currentSession && pendingNavRef.current) {
+      pendingNavRef.current = false;
       navigate(`/session/${currentSession.id}`);
     }
   }, [currentSession, navigate]);
 
+  useEffect(() => {
+    if (error) {
+      pendingNavRef.current = false;
+    }
+  }, [error]);
+
   const addOption = () => {
+    if (options.length >= MAX_OPTIONS) return;
     setOptions([...options, { name: '', description: '' }]);
   };
 
@@ -79,26 +97,60 @@ export function HomePage() {
 
   const updateOption = (index: number, field: 'name' | 'description', value: string) => {
     const newOptions = [...options];
-    newOptions[index][field] = value;
+    newOptions[index] = { ...newOptions[index], [field]: value };
     setOptions(newOptions);
   };
 
   const handleBulkApply = (parsed: ParsedOption[]) => {
-    setOptions(parsed.map(p => ({ name: p.name, description: p.description })));
+    const limited = parsed
+      .slice(0, MAX_OPTIONS)
+      .map(p => ({ name: p.name, description: p.description }));
+    while (limited.length < 2) {
+      limited.push({ name: '', description: '' });
+    }
+    setOptions(limited);
     setInputMode('manual');
   };
 
-  const handleSessionImport = (session: { title?: string; votingMethod?: string; options: ParsedOption[]; config?: { pokerMin?: number; pokerMax?: number; dotsPerVoter?: number } }) => {
+  const handleSessionImport = (session: ParsedSession) => {
     if (session.title) setSessionTitle(session.title);
-    if (session.votingMethod && ['single', 'approval', 'ranked', 'score', 'poker', 'dot', 'roman', 'fist-of-five'].includes(session.votingMethod)) {
+    if (session.votingMethod && VALID_METHODS.includes(session.votingMethod as VotingMethod)) {
       setVotingMethod(session.votingMethod as VotingMethod);
     }
     if (session.config) {
-      if (session.config.pokerMin !== undefined) setPokerMin(session.config.pokerMin);
-      if (session.config.pokerMax !== undefined) setPokerMax(session.config.pokerMax);
-      if (session.config.dotsPerVoter !== undefined) setDotsPerVoter(session.config.dotsPerVoter);
+      const hasValidMin =
+        session.config.pokerMin !== undefined &&
+        FIBONACCI_SEQUENCE.includes(session.config.pokerMin);
+      const hasValidMax =
+        session.config.pokerMax !== undefined &&
+        FIBONACCI_SEQUENCE.includes(session.config.pokerMax);
+
+      const nextMin = hasValidMin ? session.config.pokerMin! : pokerMin;
+      const nextMax = hasValidMax ? session.config.pokerMax! : pokerMax;
+
+      if (nextMin <= nextMax) {
+        if (hasValidMin) setPokerMin(nextMin);
+        if (hasValidMax) setPokerMax(nextMax);
+      }
+
+      if (
+        session.config.dotsPerVoter !== undefined &&
+        Number.isInteger(session.config.dotsPerVoter) &&
+        session.config.dotsPerVoter >= 1 &&
+        session.config.dotsPerVoter <= 10
+      ) {
+        setDotsPerVoter(session.config.dotsPerVoter);
+      }
     }
-    setOptions(session.options.map(p => ({ name: p.name, description: p.description })));
+    if (session.options.length > 0) {
+      const imported = session.options
+        .slice(0, MAX_OPTIONS)
+        .map(p => ({ name: p.name, description: p.description }));
+      while (imported.length < 2) {
+        imported.push({ name: '', description: '' });
+      }
+      setOptions(imported);
+    }
     setInputMode('manual');
   };
 
@@ -131,7 +183,7 @@ export function HomePage() {
             <Card className={styles.card}>
               <h2>Create Session</h2>
               <p className={styles.cardDesc}>Start a new voting session</p>
-              <Button onClick={() => setShowCreate(true)} size="lg">
+              <Button type="button" onClick={() => setShowCreate(true)} size="lg">
                 Create New Session
               </Button>
             </Card>
@@ -139,9 +191,15 @@ export function HomePage() {
             <Card className={styles.card}>
               <h2>Join Session</h2>
               <p className={styles.cardDesc}>Enter a session code to join</p>
-              <div className={styles.joinForm}>
+              <form
+                className={styles.joinForm}
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleJoin();
+                }}
+              >
                 <Input
-                  placeholder="Session ID"
+                  placeholder="Session ID (6 characters)"
                   value={joinSessionId}
                   onChange={(e) => setJoinSessionId(e.target.value.toUpperCase())}
                   maxLength={6}
@@ -152,13 +210,13 @@ export function HomePage() {
                   onChange={(e) => setUserName(e.target.value)}
                 />
                 <Button
-                  onClick={handleJoin}
-                  disabled={!joinSessionId.trim() || !userName.trim()}
+                  type="submit"
+                  disabled={trimmedJoinId.length !== 6 || !trimmedUserName}
                   size="lg"
                 >
                   Join
                 </Button>
-              </div>
+              </form>
             </Card>
           </div>
 
@@ -167,8 +225,14 @@ export function HomePage() {
       ) : (
         <Card className={styles.createCard}>
           <h2>Create Voting Session</h2>
-          
-          <div className={styles.form}>
+
+          <form
+            className={styles.form}
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleCreate();
+            }}
+          >
             <Input
               label="Session Title"
               placeholder="What are we voting on?"
@@ -219,74 +283,97 @@ export function HomePage() {
               </div>
             )}
 
-            {needsOptions && (
-            <div className={styles.optionsSection}>
-              <div className={styles.optionsHeader}>
-                <label className={styles.label}>Options</label>
-                <div className={styles.modeSwitcher}>
+            {needsOptions ? (
+              <div className={styles.optionsSection}>
+                <div className={styles.optionsHeader}>
+                  <label className={styles.label}>Options ({options.length}/{MAX_OPTIONS})</label>
+                  <div className={styles.modeSwitcher}>
+                    <button
+                      type="button"
+                      className={`${styles.modeBtn} ${inputMode === 'manual' ? styles.modeBtnActive : ''}`}
+                      onClick={() => setInputMode('manual')}
+                    >
+                      Manual
+                    </button>
+                    <button
+                      type="button"
+                      className={`${styles.modeBtn} ${inputMode === 'bulk' ? styles.modeBtnActive : ''}`}
+                      onClick={() => setInputMode('bulk')}
+                    >
+                      Bulk / Import
+                    </button>
+                  </div>
+                </div>
+
+                {inputMode === 'manual' ? (
+                  <>
+                    {options.map((option, index) => (
+                      <div key={index} className={styles.optionRow}>
+                        <Input
+                          placeholder={`Option ${index + 1}`}
+                          value={option.name}
+                          onChange={(e) => updateOption(index, 'name', e.target.value)}
+                        />
+                        <Input
+                          placeholder="Description (optional)"
+                          value={option.description}
+                          onChange={(e) => updateOption(index, 'description', e.target.value)}
+                        />
+                        {options.length > 2 && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={() => removeOption(index)}
+                          >
+                            ×
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={addOption}
+                      disabled={options.length >= MAX_OPTIONS}
+                    >
+                      + Add Option
+                    </Button>
+                  </>
+                ) : (
+                  <BulkOptionInput onParse={handleBulkApply} onSessionImport={handleSessionImport} votingMethod={votingMethod} />
+                )}
+              </div>
+            ) : (
+              <div className={styles.optionsSection}>
+                <div className={styles.optionsHeader}>
+                  <label className={styles.label}>Session Import</label>
                   <button
                     type="button"
-                    className={`${styles.modeBtn} ${inputMode === 'manual' ? styles.modeBtnActive : ''}`}
-                    onClick={() => setInputMode('manual')}
+                    className={`${styles.importToggleBtn} ${inputMode === 'bulk' ? styles.importToggleBtnActive : ''}`}
+                    onClick={() => setInputMode(inputMode === 'bulk' ? 'manual' : 'bulk')}
                   >
-                    Manual
-                  </button>
-                  <button
-                    type="button"
-                    className={`${styles.modeBtn} ${inputMode === 'bulk' ? styles.modeBtnActive : ''}`}
-                    onClick={() => setInputMode('bulk')}
-                  >
-                    Bulk / Import
+                    {inputMode === 'bulk' ? 'Hide Import' : 'Import from JSON / YAML'}
                   </button>
                 </div>
-              </div>
 
-              {inputMode === 'manual' ? (
-                <>
-                  {options.map((option, index) => (
-                    <div key={index} className={styles.optionRow}>
-                      <Input
-                        placeholder={`Option ${index + 1}`}
-                        value={option.name}
-                        onChange={(e) => updateOption(index, 'name', e.target.value)}
-                      />
-                      <Input
-                        placeholder="Description (optional)"
-                        value={option.description}
-                        onChange={(e) => updateOption(index, 'description', e.target.value)}
-                      />
-                      {options.length > 2 && (
-                        <Button
-                          variant="ghost"
-                          onClick={() => removeOption(index)}
-                        >
-                          ×
-                        </Button>
-                      )}
-                    </div>
-                  ))}
-                  <Button variant="secondary" onClick={addOption}>
-                    + Add Option
-                  </Button>
-                </>
-              ) : (
-                <BulkOptionInput onParse={handleBulkApply} onSessionImport={handleSessionImport} votingMethod={votingMethod} />
-              )}
-            </div>
+                {inputMode === 'bulk' && (
+                  <BulkOptionInput onParse={handleBulkApply} onSessionImport={handleSessionImport} votingMethod={votingMethod} />
+                )}
+              </div>
             )}
 
             <div className={styles.createActions}>
-              <Button variant="secondary" onClick={() => setShowCreate(false)}>
+              <Button type="button" variant="secondary" onClick={() => setShowCreate(false)}>
                 Cancel
               </Button>
               <Button
-                onClick={handleCreate}
+                type="submit"
                 disabled={!sessionTitle.trim() || (needsOptions && options.filter(o => o.name.trim()).length < 2)}
               >
                 Create Session
               </Button>
             </div>
-          </div>
+          </form>
         </Card>
       )}
     </div>

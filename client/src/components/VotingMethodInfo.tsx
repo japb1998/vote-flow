@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { VotingMethod } from '../types';
 import { Card } from './Card';
-import { Button } from './Button';
 import styles from './VotingMethodInfo.module.css';
 
 interface VotingMethodInfoProps {
@@ -26,7 +25,7 @@ const methodDetails: Record<VotingMethod, { title: string; description: string; 
   },
   score: {
     title: 'Score Voting (Range)',
-    description: 'Rate each option from 1-5 stars. The option with the highest total score wins.',
+    description: 'Rate each option from 1-5. The option with the highest average score wins.',
     example: 'Rate recipes from 1-5 to find the most popular'
   },
   poker: {
@@ -57,14 +56,15 @@ export function VotingMethodInfo({ selectedMethod }: VotingMethodInfoProps) {
 
   return (
     <div className={styles.container}>
-      <button 
+      <button
+        type="button"
         className={styles.toggleBtn}
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <span>How does {details.title} work?</span>
         <span className={styles.toggleIcon}>{isExpanded ? '▲' : '▼'}</span>
       </button>
-      
+
       {isExpanded && (
         <Card className={styles.infoCard}>
           <h4 className={styles.infoTitle}>{details.title}</h4>
@@ -84,7 +84,8 @@ export function VotingMethodInfoStandalone() {
       <h3 className={styles.sectionTitle}>Voting Methods Explained</h3>
       {(Object.keys(methodDetails) as VotingMethod[]).map(method => (
         <div key={method} className={styles.methodItem}>
-          <button 
+          <button
+            type="button"
             className={styles.methodHeader}
             onClick={() => setExpandedMethod(expandedMethod === method ? null : method)}
           >

@@ -10,7 +10,7 @@ import 'prismjs/components/prism-yaml';
 import {
   parseDelimitedText,
   parseJSON,
-  parseYAMLAsync,
+  parseSessionJSON,
   parseSessionFile,
   parseSessionYAMLAsync,
   detectFormat,
@@ -28,6 +28,9 @@ interface BulkOptionInputProps {
   /** Current voting method — templates adapt to show relevant examples. */
   votingMethod?: string;
 }
+
+const VALID_METHODS = ['single', 'approval', 'ranked', 'score', 'poker', 'dot', 'roman', 'fist-of-five'];
+const NO_OPTIONS_METHODS = ['poker', 'roman', 'fist-of-five'];
 
 const FORMAT_LABELS: Record<InputFormat, string> = {
   text: 'Text',
@@ -91,14 +94,86 @@ function getPlaceholders(votingMethod?: string): Record<InputFormat, string> {
   return DEFAULT_PLACEHOLDERS;
 }
 
+type SessionMeta = {
+  title?: string;
+  votingMethod?: string;
+  config?: ParsedSession['config'];
+};
+
+function parseJsonInput(input: string):
+  | { ok: true; options: ParsedOption[]; meta: SessionMeta | null }
+  | { ok: false; error: string } {
+  const sessionResult = parseSessionJSON(input);
+  if (sessionResult.ok) {
+    const { title, votingMethod, config, options } = sessionResult.session;
+    const hasMeta = Boolean(title || votingMethod || config);
+    return {
+      ok: true,
+      options,
+      meta: hasMeta ? { title, votingMethod, config } : null,
+    };
+  }
+
+  // Fallback for optionless session objects (poker, roman, fist-of-five)
+  const trimmed = input.trim();
+  if (trimmed.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(trimmed) as Record<string, unknown>;
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        const method = typeof parsed.votingMethod === 'string' ? parsed.votingMethod.trim() : undefined;
+        if (method && !VALID_METHODS.includes(method)) {
+          return { ok: false, error: sessionResult.error };
+        }
+        const hasNoOptions =
+          parsed.options === undefined ||
+          (Array.isArray(parsed.options) && parsed.options.length === 0);
+        if (method && NO_OPTIONS_METHODS.includes(method) && hasNoOptions) {
+          const title = typeof parsed.title === 'string' ? parsed.title.trim() || undefined : undefined;
+          let config: ParsedSession['config'];
+          if (parsed.config && typeof parsed.config === 'object') {
+            const c = parsed.config as Record<string, unknown>;
+            config = {};
+            if (typeof c.pokerMin === 'number') config.pokerMin = c.pokerMin;
+            if (typeof c.pokerMax === 'number') config.pokerMax = c.pokerMax;
+            if (typeof c.dotsPerVoter === 'number') config.dotsPerVoter = c.dotsPerVoter;
+          }
+          return {
+            ok: true,
+            options: [],
+            meta: { title, votingMethod: method, config },
+          };
+        }
+      }
+    } catch {
+      return { ok: false, error: sessionResult.error };
+    }
+  }
+
+  const optResult = parseJSON(input);
+  if (optResult.ok) {
+    return { ok: true, options: optResult.options, meta: null };
+  }
+
+  return { ok: false, error: sessionResult.error };
+}
+
 export function BulkOptionInput({ onParse, onSessionImport, votingMethod }: BulkOptionInputProps) {
-  const [format, setFormat] = useState<InputFormat>('text');
+  const [format, setFormat] = useState<InputFormat>(() =>
+    votingMethod && NO_OPTIONS_METHODS.includes(votingMethod) ? 'json' : 'text'
+  );
   const [value, setValue] = useState('');
   const [error, setError] = useState('');
   const [preview, setPreview] = useState<ParsedOption[]>([]);
-  const [sessionMeta, setSessionMeta] = useState<{ title?: string; votingMethod?: string; config?: ParsedSession['config'] } | null>(null);
+  const [sessionMeta, setSessionMeta] = useState<SessionMeta | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Default to JSON when switching to an optionless voting method with an empty editor
+  useEffect(() => {
+    if (!value.trim() && votingMethod && NO_OPTIONS_METHODS.includes(votingMethod) && format === 'text') {
+      setFormat('json');
+    }
+  }, [votingMethod, value, format]);
 
   // Syntax highlighting via Prism
   const highlightCode = useCallback((code: string) => {
@@ -115,7 +190,7 @@ export function BulkOptionInput({ onParse, onSessionImport, votingMethod }: Bulk
       .replace(/>/g, '&gt;');
   }, [format]);
 
-  // Parse on every change for live preview
+  // Parse on every change for live preview (debounced for YAML)
   useEffect(() => {
     if (!value.trim()) {
       setPreview([]);
@@ -126,81 +201,57 @@ export function BulkOptionInput({ onParse, onSessionImport, votingMethod }: Bulk
 
     let cancelled = false;
 
-    async function parse() {
-      if (format === 'yaml') {
-        // YAML parsing is async (server-side)
-        const result = await parseYAMLAsync(value);
-        if (cancelled) return;
-        if (result.ok) {
-          setPreview(result.options);
-          setError('');
-        } else {
-          setPreview([]);
-          setError(result.error);
-        }
-
-        // Also try session metadata extraction
+    if (format === 'yaml') {
+      // Debounce server-side YAML parsing and make a single session parse call
+      const timer = setTimeout(async () => {
         const sessionResult = await parseSessionYAMLAsync(value);
         if (cancelled) return;
-        if (sessionResult.ok && (sessionResult.session.title || sessionResult.session.votingMethod)) {
-          setSessionMeta({
-            title: sessionResult.session.title,
-            votingMethod: sessionResult.session.votingMethod,
-            config: sessionResult.session.config,
-          });
-        } else {
-          setSessionMeta(null);
-        }
-      } else {
-        // Text and JSON are synchronous
-        const parser = format === 'json' ? parseJSON : parseDelimitedText;
-        const result = parser(value);
-        if (cancelled) return;
-        if (result.ok) {
-          setPreview(result.options);
+        if (sessionResult.ok) {
+          setPreview(sessionResult.session.options);
+          const { title, votingMethod: method, config } = sessionResult.session;
+          if (title || method || config) {
+            setSessionMeta({ title, votingMethod: method, config });
+          } else {
+            setSessionMeta(null);
+          }
           setError('');
         } else {
           setPreview([]);
-          setError(result.error);
-        }
-
-        // For JSON, extract session metadata
-        if (format === 'json') {
-          try {
-            const trimmed = value.trim();
-            if (trimmed.startsWith('{')) {
-              const obj = JSON.parse(trimmed);
-              if (obj.title || obj.votingMethod) {
-                let config: ParsedSession['config'];
-                if (obj.config && typeof obj.config === 'object') {
-                  const c = obj.config as Record<string, unknown>;
-                  config = {};
-                  if (typeof c.pokerMin === 'number') config.pokerMin = c.pokerMin;
-                  if (typeof c.pokerMax === 'number') config.pokerMax = c.pokerMax;
-                  if (typeof c.dotsPerVoter === 'number') config.dotsPerVoter = c.dotsPerVoter;
-                }
-                setSessionMeta({
-                  title: typeof obj.title === 'string' ? obj.title : undefined,
-                  votingMethod: typeof obj.votingMethod === 'string' ? obj.votingMethod : undefined,
-                  config,
-                });
-              } else {
-                setSessionMeta(null);
-              }
-            } else {
-              setSessionMeta(null);
-            }
-          } catch {
-            setSessionMeta(null);
-          }
-        } else {
           setSessionMeta(null);
+          setError(sessionResult.error);
         }
-      }
+      }, 300);
+
+      return () => {
+        cancelled = true;
+        clearTimeout(timer);
+      };
     }
 
-    parse();
-    return () => { cancelled = true; };
+    if (format === 'json') {
+      const result = parseJsonInput(value);
+      if (result.ok) {
+        setPreview(result.options);
+        setSessionMeta(result.meta);
+        setError('');
+      } else {
+        setPreview([]);
+        setSessionMeta(null);
+        setError(result.error);
+      }
+      return;
+    }
+
+    // Delimited text is synchronous
+    const result = parseDelimitedText(value);
+    if (result.ok) {
+      setPreview(result.options);
+      setError('');
+    } else {
+      setPreview([]);
+      setError(result.error);
+    }
+    setSessionMeta(null);
   }, [value, format]);
 
   // Auto-detect format when pasting or typing
@@ -220,29 +271,43 @@ export function BulkOptionInput({ onParse, onSessionImport, votingMethod }: Bulk
       const content = e.target?.result as string;
       if (!content) return;
 
+      const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
+      const formatMap: Record<string, InputFormat> = {
+        json: 'json', yaml: 'yaml', yml: 'yaml', txt: 'text',
+      };
+
       // Try full session parse first (async for YAML)
       const sessionResult = await parseSessionFile(content, file.name);
       if (sessionResult.ok) {
-        const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
-        const formatMap: Record<string, InputFormat> = {
-          json: 'json', yaml: 'yaml', yml: 'yaml', txt: 'text',
-        };
-        setFormat(formatMap[ext] ?? 'text');
+        setFormat(formatMap[ext] ?? detectFormat(content));
         setValue(content);
         setPreview(sessionResult.session.options);
 
-        if (sessionResult.session.title || sessionResult.session.votingMethod) {
-          setSessionMeta({
-            title: sessionResult.session.title,
-            votingMethod: sessionResult.session.votingMethod,
-            config: sessionResult.session.config,
-          });
+        const { title, votingMethod: method, config } = sessionResult.session;
+        if (title || method || config) {
+          setSessionMeta({ title, votingMethod: method, config });
+        } else {
+          setSessionMeta(null);
         }
 
         setError('');
-      } else {
-        setError(sessionResult.error);
+        return;
       }
+
+      // Fallback for optionless JSON session files
+      if (ext === 'json' || content.trim().startsWith('{')) {
+        const jsonFallback = parseJsonInput(content);
+        if (jsonFallback.ok) {
+          setFormat('json');
+          setValue(content);
+          setPreview(jsonFallback.options);
+          setSessionMeta(jsonFallback.meta);
+          setError('');
+          return;
+        }
+      }
+
+      setError(sessionResult.error);
     };
     reader.readAsText(file);
   };
@@ -254,24 +319,45 @@ export function BulkOptionInput({ onParse, onSessionImport, votingMethod }: Bulk
     if (file) handleFileUpload(file);
   };
 
+  const isOptionlessSession = Boolean(
+    sessionMeta?.votingMethod &&
+    VALID_METHODS.includes(sessionMeta.votingMethod) &&
+    NO_OPTIONS_METHODS.includes(sessionMeta.votingMethod)
+  );
+  const hasValidMethod = !sessionMeta?.votingMethod || VALID_METHODS.includes(sessionMeta.votingMethod);
+  const canApply = !error && hasValidMethod && (preview.length > 0 || isOptionlessSession);
+
   const handleApply = () => {
-    if (preview.length === 0) return;
+    if (!canApply) return;
+
+    const validMethod =
+      sessionMeta?.votingMethod && VALID_METHODS.includes(sessionMeta.votingMethod)
+        ? sessionMeta.votingMethod
+        : undefined;
 
     // If session metadata is present and handler exists, use full session import
-    if (sessionMeta && (sessionMeta.title || sessionMeta.votingMethod) && onSessionImport) {
+    if (sessionMeta && (sessionMeta.title || validMethod || sessionMeta.config) && onSessionImport) {
       onSessionImport({
         title: sessionMeta.title,
-        votingMethod: sessionMeta.votingMethod,
+        votingMethod: validMethod,
         options: preview,
         config: sessionMeta.config,
       });
-    } else {
+    } else if (preview.length > 0) {
       onParse(preview);
     }
     setValue('');
     setPreview([]);
     setSessionMeta(null);
   };
+
+  const configSummary = sessionMeta?.config
+    ? [
+        sessionMeta.config.pokerMin !== undefined ? `min: ${sessionMeta.config.pokerMin}` : null,
+        sessionMeta.config.pokerMax !== undefined ? `max: ${sessionMeta.config.pokerMax}` : null,
+        sessionMeta.config.dotsPerVoter !== undefined ? `dots: ${sessionMeta.config.dotsPerVoter}` : null,
+      ].filter(Boolean).join(', ')
+    : '';
 
   return (
     <div className={styles.container}>
@@ -352,13 +438,15 @@ export function BulkOptionInput({ onParse, onSessionImport, votingMethod }: Bulk
         <div className={styles.hint}>
           .json, .yaml, .txt
         </div>
-        {preview.length > 0 && (
+        {canApply && (
           <Button
             size="sm"
             onClick={handleApply}
             type="button"
           >
-            {sessionMeta?.title ? 'Import session' : `Apply ${preview.length} option${preview.length !== 1 ? 's' : ''}`}
+            {sessionMeta && (sessionMeta.title || sessionMeta.votingMethod)
+              ? 'Import session'
+              : `Apply ${preview.length} option${preview.length !== 1 ? 's' : ''}`}
           </Button>
         )}
       </div>
@@ -367,7 +455,7 @@ export function BulkOptionInput({ onParse, onSessionImport, votingMethod }: Bulk
       {error && <div className={styles.error}>{error}</div>}
 
       {/* Session metadata preview */}
-      {sessionMeta && (sessionMeta.title || sessionMeta.votingMethod) && (
+      {sessionMeta && (sessionMeta.title || sessionMeta.votingMethod || configSummary) && (
         <div className={styles.sessionMeta}>
           {sessionMeta.title && (
             <div className={styles.metaItem}>
@@ -379,6 +467,12 @@ export function BulkOptionInput({ onParse, onSessionImport, votingMethod }: Bulk
             <div className={styles.metaItem}>
               <span className={styles.metaLabel}>Method</span>
               <span className={styles.metaValue}>{sessionMeta.votingMethod}</span>
+            </div>
+          )}
+          {configSummary && (
+            <div className={styles.metaItem}>
+              <span className={styles.metaLabel}>Config</span>
+              <span className={styles.metaValue}>{configSummary}</span>
             </div>
           )}
         </div>
