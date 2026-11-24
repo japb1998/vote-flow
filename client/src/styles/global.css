@@ -9,6 +9,8 @@
    ========================================== */
 
 :root {
+  color-scheme: dark;
+
   /* --- Palette: Pink (default) --- */
   --palette-primary: #EC4899;
   --palette-primary-hover: #F472B6;
@@ -86,6 +88,8 @@
 
 /* ---------- Light Theme ---------- */
 [data-theme="light"] {
+  color-scheme: light;
+
   --color-bg: #fafafa;
   --color-bg-elevated: #ffffff;
   --color-bg-hover: #f0f0f0;
@@ -225,6 +229,7 @@ a:hover {
 
 button {
   font-family: var(--font-sans);
+  color: inherit;
   cursor: pointer;
 }
 

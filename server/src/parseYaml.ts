@@ -1,4 +1,5 @@
 import yaml from 'js-yaml';
+import { VALID_VOTING_METHODS, NO_OPTIONS_METHODS } from './utils/helpers';
 
 export interface ParsedOption {
   name: string;
@@ -9,6 +10,11 @@ export interface ParsedSession {
   title?: string;
   votingMethod?: string;
   options: ParsedOption[];
+  config?: {
+    pokerMin?: number;
+    pokerMax?: number;
+    dotsPerVoter?: number;
+  };
 }
 
 export type ParseResult =
@@ -19,7 +25,7 @@ export type SessionParseResult =
   | { ok: true; session: ParsedSession }
   | { ok: false; error: string };
 
-const VALID_METHODS = ['single', 'approval', 'ranked', 'score'];
+const VALID_METHODS = VALID_VOTING_METHODS;
 
 function normalizeOptions(raw: unknown): ParsedOption[] | null {
   if (!Array.isArray(raw)) return null;
@@ -67,7 +73,7 @@ export function parseYAML(input: string): ParseResult {
   return { ok: false, error: 'Expected a YAML list (- item) or object with "options" key' };
 }
 
-/** Parse YAML as a full session (title + votingMethod + options). */
+/** Parse YAML as a full session (title + votingMethod + config + options). */
 export function parseSessionYAML(input: string): SessionParseResult {
   const trimmed = input.trim();
   if (!trimmed) return { ok: false, error: 'Empty input' };
@@ -98,14 +104,48 @@ export function parseSessionYAML(input: string): SessionParseResult {
     return { ok: false, error: `Invalid votingMethod: "${votingMethod}". Use: ${VALID_METHODS.join(', ')}` };
   }
 
+  let config: ParsedSession['config'] | undefined;
+  if (obj.config && typeof obj.config === 'object' && !Array.isArray(obj.config)) {
+    const rawConfig = obj.config as Record<string, unknown>;
+    const extracted: NonNullable<ParsedSession['config']> = {};
+    if (typeof rawConfig.pokerMin === 'number' && Number.isFinite(rawConfig.pokerMin)) {
+      extracted.pokerMin = rawConfig.pokerMin;
+    }
+    if (typeof rawConfig.pokerMax === 'number' && Number.isFinite(rawConfig.pokerMax)) {
+      extracted.pokerMax = rawConfig.pokerMax;
+    }
+    if (typeof rawConfig.dotsPerVoter === 'number' && Number.isFinite(rawConfig.dotsPerVoter)) {
+      extracted.dotsPerVoter = rawConfig.dotsPerVoter;
+    }
+    if (Object.keys(extracted).length > 0) {
+      config = extracted;
+    }
+  }
+
+  const isNoOptionsMethod = votingMethod !== undefined && NO_OPTIONS_METHODS.includes(votingMethod);
   const options = normalizeOptions(obj.options);
   if (!options) {
-    // Maybe the whole thing is just a list format that yaml parsed as object
+    if (isNoOptionsMethod) {
+      return {
+        ok: true,
+        session: {
+          title,
+          votingMethod,
+          options: [],
+          ...(config ? { config } : {}),
+        },
+      };
+    }
     return { ok: false, error: 'Missing or empty "options" list' };
   }
 
   return {
     ok: true,
-    session: { title, votingMethod, options },
+    session: {
+      title,
+      votingMethod,
+      options,
+      ...(config ? { config } : {}),
+    },
   };
 }

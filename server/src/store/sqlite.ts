@@ -4,6 +4,8 @@ import path from 'path';
 import { Session, Vote, Option, Selection, VotingMethod } from '../types';
 import { SessionStore, UserInfo } from './interface';
 
+const IP_WINDOW_MS = 3600000; // 1 hour
+
 export class SqliteSessionStore implements SessionStore {
   private db: Database | null = null;
   private dbPath: string;
@@ -46,6 +48,7 @@ export class SqliteSessionStore implements SessionStore {
         session_id TEXT NOT NULL,
         name TEXT NOT NULL,
         socket_id TEXT,
+        auth_token TEXT,
         PRIMARY KEY (id, session_id),
         FOREIGN KEY (session_id) REFERENCES sessions (id) ON DELETE CASCADE
       );
@@ -72,26 +75,32 @@ export class SqliteSessionStore implements SessionStore {
       CREATE INDEX IF NOT EXISTS idx_votes_session_id ON votes (session_id);
       CREATE INDEX IF NOT EXISTS idx_sessions_status ON sessions (status);
       CREATE INDEX IF NOT EXISTS idx_sessions_closed_at ON sessions (closed_at);
-      CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions (expires_at);
     `);
 
-    // Migration: add expires_at column to existing databases
-    const columns = await this.db.all("PRAGMA table_info(sessions)");
+    // Migration: add expires_at column to existing databases before creating its index
+    const columns = await this.db.all('PRAGMA table_info(sessions)');
     const hasExpiresAt = columns.some((col: { name: string }) => col.name === 'expires_at');
     if (!hasExpiresAt) {
-      await this.db.exec(`ALTER TABLE sessions ADD COLUMN expires_at INTEGER`);
+      await this.db.exec('ALTER TABLE sessions ADD COLUMN expires_at INTEGER');
       await this.db.run(
         `UPDATE sessions SET expires_at = CASE
            WHEN closed_at IS NOT NULL THEN closed_at + 1800000
            ELSE created_at + 86400000
          END`
       );
-      await this.db.exec(`CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions (expires_at)`);
     }
+
+    await this.db.exec('CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions (expires_at)');
 
     // Migration: add config column to existing databases
     if (!columns.some((col: { name: string }) => col.name === 'config')) {
       await this.db.exec('ALTER TABLE sessions ADD COLUMN config TEXT');
+    }
+
+    // Migration: add auth_token column to existing users tables
+    const userColumns = await this.db.all('PRAGMA table_info(users)');
+    if (!userColumns.some((col: { name: string }) => col.name === 'auth_token')) {
+      await this.db.exec('ALTER TABLE users ADD COLUMN auth_token TEXT');
     }
   }
 
@@ -179,27 +188,40 @@ export class SqliteSessionStore implements SessionStore {
   async addUser(sessionId: string, user: UserInfo): Promise<void> {
     const db = this.getDb();
     await db.run(
-      'INSERT OR REPLACE INTO users (id, session_id, name, socket_id) VALUES (?, ?, ?, ?)',
-      [user.id, sessionId, user.name, user.socketId]
+      'INSERT OR REPLACE INTO users (id, session_id, name, socket_id, auth_token) VALUES (?, ?, ?, ?, ?)',
+      [user.id, sessionId, user.name, user.socketId, user.authToken ?? null]
     );
   }
 
   async getUser(sessionId: string, userId: string): Promise<UserInfo | null> {
     const db = this.getDb();
     const row = await db.get(
-      'SELECT id, name, socket_id FROM users WHERE id = ? AND session_id = ?',
+      'SELECT id, name, socket_id, auth_token FROM users WHERE id = ? AND session_id = ?',
       [userId, sessionId]
     );
     if (!row) return null;
-    return { id: row.id, name: row.name, socketId: row.socket_id };
+    return {
+      id: row.id,
+      name: row.name,
+      socketId: row.socket_id,
+      authToken: row.auth_token ?? undefined
+    };
   }
 
   async getUsers(sessionId: string): Promise<Map<string, UserInfo>> {
     const db = this.getDb();
-    const rows = await db.all('SELECT id, name, socket_id FROM users WHERE session_id = ?', sessionId);
+    const rows = await db.all(
+      'SELECT id, name, socket_id, auth_token FROM users WHERE session_id = ?',
+      sessionId
+    );
     const map = new Map<string, UserInfo>();
     for (const row of rows) {
-      map.set(row.id, { id: row.id, name: row.name, socketId: row.socket_id });
+      map.set(row.id, {
+        id: row.id,
+        name: row.name,
+        socketId: row.socket_id,
+        authToken: row.auth_token ?? undefined
+      });
     }
     return map;
   }
@@ -223,10 +245,21 @@ export class SqliteSessionStore implements SessionStore {
       sets.push('socket_id = ?');
       values.push(updates.socketId);
     }
+    if (updates.authToken !== undefined) {
+      sets.push('auth_token = ?');
+      values.push(updates.authToken);
+    }
 
     if (sets.length === 0) return;
     values.push(userId, sessionId);
     await db.run(`UPDATE users SET ${sets.join(', ')} WHERE id = ? AND session_id = ?`, values);
+
+    if (updates.name !== undefined) {
+      await db.run(
+        'UPDATE votes SET user_name = ? WHERE session_id = ? AND user_id = ?',
+        [updates.name, sessionId, userId]
+      );
+    }
   }
 
   async removeUserBySocketId(socketId: string): Promise<{ sessionId: string; userId: string }[]> {
@@ -276,16 +309,24 @@ export class SqliteSessionStore implements SessionStore {
 
   async getIpSessionCount(ip: string): Promise<number> {
     const db = this.getDb();
-    const row = await db.get('SELECT count FROM ip_sessions WHERE ip = ?', ip);
+    const cutoff = Date.now() - IP_WINDOW_MS;
+    const row = await db.get(
+      'SELECT count FROM ip_sessions WHERE ip = ? AND last_created_at >= ?',
+      [ip, cutoff]
+    );
     return row?.count ?? 0;
   }
 
   async incrementIpSessionCount(ip: string): Promise<void> {
     const db = this.getDb();
+    const now = Date.now();
+    const cutoff = now - IP_WINDOW_MS;
     await db.run(
       `INSERT INTO ip_sessions (ip, count, last_created_at) VALUES (?, 1, ?)
-       ON CONFLICT (ip) DO UPDATE SET count = count + 1, last_created_at = ?`,
-      [ip, Date.now(), Date.now()]
+       ON CONFLICT (ip) DO UPDATE SET
+         count = CASE WHEN ip_sessions.last_created_at < ? THEN 1 ELSE ip_sessions.count + 1 END,
+         last_created_at = ?`,
+      [ip, now, cutoff, now]
     );
   }
 
@@ -299,7 +340,7 @@ export class SqliteSessionStore implements SessionStore {
     );
 
     // Clean up stale IP counters (older than 1 hour)
-    await db.run('DELETE FROM ip_sessions WHERE last_created_at < ?', [now - 3600000]);
+    await db.run('DELETE FROM ip_sessions WHERE last_created_at < ?', [now - IP_WINDOW_MS]);
 
     return result.changes ?? 0;
   }

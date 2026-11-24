@@ -74,6 +74,11 @@ export interface JoinSessionPayload {
   sessionId: string;
   userName: string;
   userId?: string;
+  authToken?: string;
+}
+
+export interface LeaveSessionPayload {
+  sessionId: string;
 }
 
 export interface SubmitVotePayload {

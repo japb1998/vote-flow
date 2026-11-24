@@ -11,33 +11,40 @@ export function getPokerCards(config?: SessionConfig): number[] {
 export function calculatePoker(votes: Vote[], config?: SessionConfig): Results {
   const cards = getPokerCards(config);
   const cardStrings = cards.map(String);
+  const validCards = new Set(cardStrings);
 
   const totals: Record<string, number> = {};
-  cardStrings.forEach(c => totals[c] = 0);
+  cardStrings.forEach(c => {
+    totals[c] = 0;
+  });
 
   const numericVotes: number[] = [];
 
   votes.forEach(vote => {
     if (vote.selection.type === 'poker') {
       const card = vote.selection.value;
-      if (totals[card] !== undefined) {
+      if (
+        typeof card === 'string' &&
+        validCards.has(card) &&
+        Object.prototype.hasOwnProperty.call(totals, card)
+      ) {
         totals[card]++;
         numericVotes.push(Number(card));
       }
     }
   });
 
-  const totalVoters = votes.length;
+  const validCount = numericVotes.length;
   const percentages: Record<string, number> = {};
   cardStrings.forEach(c => {
-    percentages[c] = totalVoters > 0 ? (totals[c] / totalVoters) * 100 : 0;
+    percentages[c] = validCount > 0 ? (totals[c] / validCount) * 100 : 0;
   });
 
   let average: number | undefined;
   let median: number | undefined;
 
-  if (numericVotes.length > 0) {
-    average = numericVotes.reduce((sum, v) => sum + v, 0) / numericVotes.length;
+  if (validCount > 0) {
+    average = numericVotes.reduce((sum, v) => sum + v, 0) / validCount;
     const sorted = [...numericVotes].sort((a, b) => a - b);
     const mid = Math.floor(sorted.length / 2);
     median = sorted.length % 2 === 0
@@ -45,19 +52,22 @@ export function calculatePoker(votes: Vote[], config?: SessionConfig): Results {
       : sorted[mid];
   }
 
-  // Consensus: all voters picked the same card
+  // Consensus: all valid voters picked the same card
   const votedCards = cardStrings.filter(c => totals[c] > 0);
-  const consensus = totalVoters > 0 && votedCards.length === 1;
+  const consensus = validCount > 0 && votedCards.length === 1;
 
-  // Winner is the card with most votes
-  let winner: string | undefined;
+  // Winner is the card with strictly the most votes
   let maxCount = 0;
+  let topCards: string[] = [];
   cardStrings.forEach(c => {
     if (totals[c] > maxCount) {
       maxCount = totals[c];
-      winner = c;
+      topCards = [c];
+    } else if (totals[c] === maxCount && maxCount > 0) {
+      topCards.push(c);
     }
   });
+  const winner = maxCount > 0 && topCards.length === 1 ? topCards[0] : undefined;
 
   return {
     method: 'poker',

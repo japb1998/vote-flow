@@ -194,7 +194,19 @@ export async function parseYAMLAsync(input: string): Promise<ParseResult> {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ content: trimmed }),
     });
-    return await res.json() as ParseResult;
+    let data: (Partial<ParseResult> & { error?: string }) | null = null;
+    try {
+      data = await res.json();
+    } catch {
+      data = null;
+    }
+    if (!res.ok) {
+      return { ok: false, error: data?.error || `Server error (${res.status})` };
+    }
+    if (!data || typeof data.ok !== 'boolean') {
+      return { ok: false, error: 'Invalid response from server' };
+    }
+    return data as ParseResult;
   } catch {
     return { ok: false, error: 'Failed to reach server for YAML parsing' };
   }
@@ -213,7 +225,19 @@ export async function parseSessionYAMLAsync(input: string): Promise<SessionParse
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ content: trimmed, mode: 'session' }),
     });
-    return await res.json() as SessionParseResult;
+    let data: (Partial<SessionParseResult> & { error?: string }) | null = null;
+    try {
+      data = await res.json();
+    } catch {
+      data = null;
+    }
+    if (!res.ok) {
+      return { ok: false, error: data?.error || `Server error (${res.status})` };
+    }
+    if (!data || typeof data.ok !== 'boolean') {
+      return { ok: false, error: 'Invalid response from server' };
+    }
+    return data as SessionParseResult;
   } catch {
     return { ok: false, error: 'Failed to reach server for YAML parsing' };
   }
@@ -245,6 +269,7 @@ export function detectFormat(input: string): InputFormat {
 // ---------------------------------------------------------------------------
 
 const VALID_METHODS = ['single', 'approval', 'ranked', 'score', 'poker', 'dot', 'roman', 'fist-of-five'];
+const NO_OPTIONS_METHODS = ['poker', 'roman', 'fist-of-five'];
 
 /**
  * Parse a full session from JSON.
@@ -289,24 +314,41 @@ export function parseSessionJSON(input: string): SessionParseResult {
     return { ok: false, error: `Invalid votingMethod: "${method}". Use: ${VALID_METHODS.join(', ')}` };
   }
 
-  // Parse options
-  const optionsRaw = obj.options;
-  if (!optionsRaw || !Array.isArray(optionsRaw)) {
-    return { ok: false, error: 'Missing "options" array' };
-  }
-
-  const optResult = parseJSON(JSON.stringify(optionsRaw));
-  if (!optResult.ok) return optResult;
-
   // Extract config if present
   let config: ParsedSession['config'];
-  if (obj.config && typeof obj.config === 'object') {
+  if (obj.config && typeof obj.config === 'object' && !Array.isArray(obj.config)) {
     const c = obj.config as Record<string, unknown>;
     config = {};
     if (typeof c.pokerMin === 'number') config.pokerMin = c.pokerMin;
     if (typeof c.pokerMax === 'number') config.pokerMax = c.pokerMax;
     if (typeof c.dotsPerVoter === 'number') config.dotsPerVoter = c.dotsPerVoter;
   }
+
+  // Allow optionless methods to omit options or provide an empty array
+  const optionsRaw = obj.options;
+  if (
+    method &&
+    NO_OPTIONS_METHODS.includes(method) &&
+    (optionsRaw === undefined || optionsRaw === null || (Array.isArray(optionsRaw) && optionsRaw.length === 0))
+  ) {
+    return {
+      ok: true,
+      session: {
+        title: title || undefined,
+        votingMethod: method,
+        options: [],
+        config,
+      },
+    };
+  }
+
+  // Parse options
+  if (!optionsRaw || !Array.isArray(optionsRaw)) {
+    return { ok: false, error: 'Missing "options" array' };
+  }
+
+  const optResult = parseJSON(JSON.stringify(optionsRaw));
+  if (!optResult.ok) return optResult;
 
   return {
     ok: true,

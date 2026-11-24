@@ -2,6 +2,26 @@ import React, { useRef, createContext, useContext, useEffect, useState, useCallb
 import { io, Socket } from 'socket.io-client';
 import { Session, SessionConfig, Results, Vote, UserInfo } from '../types';
 
+function getAuthStorageKey(sessionId: string, userId: string): string {
+  return `vf-auth-${sessionId.toUpperCase()}-${userId}`;
+}
+
+function saveAuthToken(sessionId: string, userId: string, token: string): void {
+  try {
+    localStorage.setItem(getAuthStorageKey(sessionId, userId), token);
+  } catch {
+    // Ignore storage errors (e.g. private browsing or quota exceeded)
+  }
+}
+
+function getAuthToken(sessionId: string, userId: string): string | null {
+  try {
+    return localStorage.getItem(getAuthStorageKey(sessionId, userId));
+  } catch {
+    return null;
+  }
+}
+
 interface SocketContextType {
   socket: Socket | null;
   isConnected: boolean;
@@ -32,16 +52,28 @@ export function SocketProvider({ children }: { children: ReactNode }) {
   const [users, setUsers] = useState<UserInfo[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [errorCode, setErrorCode] = useState<string | null>(null);
-  
-  const userIdRef = useRef( userId);
+
+  const userIdRef = useRef(userId);
   const userNameRef = useRef(userName);
   const sessionRef = useRef(currentSession);
+  const authTokenRef = useRef<string | null>(null);
+  const errorTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => { sessionRef.current = currentSession; }, [currentSession]);
-  useEffect(() => { userIdRef.current = userId }, [userId]);
+  useEffect(() => { userIdRef.current = userId; }, [userId]);
   useEffect(() => { userNameRef.current = userName; }, [userName]);
+
+  const clearErrorState = useCallback(() => {
+    if (errorTimeoutRef.current) {
+      clearTimeout(errorTimeoutRef.current);
+      errorTimeoutRef.current = null;
+    }
+    setError(null);
+    setErrorCode(null);
+  }, []);
+
   useEffect(() => {
-    const serverUrl = import.meta.env.DEV ? 'http://localhost:3001' : window.location.origin;
+    const serverUrl = window.location.origin;
     const newSocket = io(serverUrl, {
       transports: ['websocket', 'polling']
     });
@@ -49,14 +81,19 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     newSocket.on('connect', () => {
       setIsConnected(true);
       console.log('Connected to server');
-      
+
       // handle reconnection logic
       if (userIdRef.current && sessionRef.current) {
+        const storedToken =
+          authTokenRef.current ||
+          getAuthToken(sessionRef.current.id, userIdRef.current) ||
+          undefined;
         newSocket.emit('join-session', {
           sessionId: sessionRef.current.id,
           userName: userNameRef.current || 'Reconnected User',
-          userId: userIdRef.current
-        })
+          userId: userIdRef.current,
+          authToken: storedToken,
+        });
       }
     });
 
@@ -65,23 +102,45 @@ export function SocketProvider({ children }: { children: ReactNode }) {
       console.log('Disconnected from server');
     });
 
-    newSocket.on('session-created', ({ session, userId }) => {
+    newSocket.on('session-created', ({ session, userId: createdUserId, authToken, results: sessionResults, users: sessionUsers }) => {
+      clearErrorState();
+      if (authToken) {
+        authTokenRef.current = authToken;
+        saveAuthToken(session.id, createdUserId, authToken);
+      } else {
+        authTokenRef.current = null;
+      }
+      sessionRef.current = session;
+      userIdRef.current = createdUserId;
+      userNameRef.current = 'Creator';
       setCurrentSession(session);
-      setUserId(userId);
+      setUserId(createdUserId);
       setUserName('Creator');
-      setResults(null);
-      setUsers([]);
+      setResults(sessionResults ?? null);
+      setUsers(sessionUsers ?? [{ id: createdUserId, name: 'Creator' }]);
     });
 
-    newSocket.on('session-joined', ({ session, userId: joinedUserId, userName: joinedUserName, results: sessionResults, users: sessionUsers }) => {
+    newSocket.on('session-joined', ({ session, userId: joinedUserId, userName: joinedUserName, authToken, results: sessionResults, users: sessionUsers }) => {
+      clearErrorState();
+      if (authToken) {
+        authTokenRef.current = authToken;
+        saveAuthToken(session.id, joinedUserId, authToken);
+      } else {
+        authTokenRef.current = getAuthToken(session.id, joinedUserId);
+      }
+      sessionRef.current = session;
+      userIdRef.current = joinedUserId;
+      userNameRef.current = joinedUserName;
       setCurrentSession(session);
       setUserId(joinedUserId);
       setUserName(joinedUserName);
-      setResults(sessionResults);
+      setResults(sessionResults ?? null);
       setUsers(sessionUsers ?? session.votes.map((v: Vote) => ({ id: v.userId, name: v.userName })));
     });
 
     newSocket.on('vote-submitted', ({ sessionId, vote }) => {
+      if (!sessionRef.current || sessionRef.current.id !== sessionId) return;
+
       setCurrentSession(prev => {
         if (!prev || prev.id !== sessionId) return prev;
         const existingIndex = prev.votes.findIndex((v: Vote) => v.userId === vote.userId);
@@ -92,7 +151,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
         }
         return { ...prev, votes: [...prev.votes, vote] };
       });
-      
+
       // Update or add user in participants list
       setUsers(prev => {
         const existingUser = prev.find(u => u.id === vote.userId);
@@ -104,48 +163,74 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     });
 
     newSocket.on('results-updated', ({ sessionId, results: newResults }) => {
-      setCurrentSession(prev => {
-        if (!prev || prev.id !== sessionId) return prev;
-        return { ...prev, votes: prev.votes };
-      });
+      if (!sessionRef.current || sessionRef.current.id !== sessionId) return;
       setResults(newResults);
     });
 
     newSocket.on('session-updated', ({ session, results: sessionResults }) => {
+      if (!sessionRef.current || sessionRef.current.id !== session.id) return;
+      sessionRef.current = session;
       setCurrentSession(session);
       setResults(sessionResults);
     });
 
-    newSocket.on('user-joined', ({ userId, userName }) => {
-      setUsers(prev => [...prev.filter(u => u.id !== userId), { id: userId, name: userName }]);
+    newSocket.on('user-joined', ({ sessionId, userId: joinedUserId, userName: joinedUserName }) => {
+      if (!sessionRef.current || (sessionId && sessionRef.current.id !== sessionId)) return;
+      setUsers(prev => [...prev.filter(u => u.id !== joinedUserId), { id: joinedUserId, name: joinedUserName }]);
     });
 
-    newSocket.on('user-name-updated', ({ userId, userName }) => {
-      setUsers(prev => prev.map(u => u.id === userId ? { ...u, name: userName } : u));
-      if (userId === userId) {
-        setUserName(userName);
+    newSocket.on('user-name-updated', ({ sessionId, userId: updatedUserId, userName: updatedUserName }) => {
+      if (!sessionRef.current || (sessionId && sessionRef.current.id !== sessionId)) return;
+
+      setUsers(prev => prev.map(u => u.id === updatedUserId ? { ...u, name: updatedUserName } : u));
+      setCurrentSession(prev => {
+        if (!prev || (sessionId && prev.id !== sessionId)) return prev;
+        if (!prev.votes.some(v => v.userId === updatedUserId && v.userName !== updatedUserName)) return prev;
+        return {
+          ...prev,
+          votes: prev.votes.map(v => v.userId === updatedUserId ? { ...v, userName: updatedUserName } : v),
+        };
+      });
+      if (updatedUserId === userIdRef.current) {
+        userNameRef.current = updatedUserName;
+        setUserName(updatedUserName);
       }
     });
 
     newSocket.on('error', ({ message, code }) => {
+      if (errorTimeoutRef.current) {
+        clearTimeout(errorTimeoutRef.current);
+      }
       setError(message);
       setErrorCode(code || null);
-      setTimeout(() => { setError(null); setErrorCode(null); }, 5000);
+      errorTimeoutRef.current = setTimeout(() => {
+        setError(null);
+        setErrorCode(null);
+        errorTimeoutRef.current = null;
+      }, 5000);
     });
 
     setSocket(newSocket);
 
     return () => {
+      if (errorTimeoutRef.current) {
+        clearTimeout(errorTimeoutRef.current);
+        errorTimeoutRef.current = null;
+      }
       newSocket.close();
     };
-  }, []);
+  }, [clearErrorState]);
 
   const createSession = useCallback((title: string, votingMethod: string, options: { name: string; description?: string }[], config?: SessionConfig) => {
     socket?.emit('create-session', { title, votingMethod, options, config });
   }, [socket]);
 
   const joinSession = useCallback((sessionId: string, userName: string, existingUserId?: string) => {
-    socket?.emit('join-session', { sessionId, userName, userId: existingUserId });
+    const authToken = existingUserId ? (getAuthToken(sessionId, existingUserId) ?? undefined) : undefined;
+    if (authToken) {
+      authTokenRef.current = authToken;
+    }
+    socket?.emit('join-session', { sessionId, userName, userId: existingUserId, authToken });
   }, [socket]);
 
   const submitVote = useCallback((sessionId: string, vote: Omit<Vote, 'id' | 'timestamp'>) => {
@@ -159,17 +244,37 @@ export function SocketProvider({ children }: { children: ReactNode }) {
   }, [socket, userId]);
 
   const leaveSession = useCallback(() => {
+    if (sessionRef.current?.id) {
+      socket?.emit('leave-session', { sessionId: sessionRef.current.id });
+    }
+    sessionRef.current = null;
+    userIdRef.current = null;
+    userNameRef.current = null;
+    authTokenRef.current = null;
+    clearErrorState();
     setCurrentSession(null);
     setUserId(null);
     setUserName(null);
     setResults(null);
     setUsers([]);
-  }, []);
+  }, [socket, clearErrorState]);
 
   const updateUserName = useCallback((newName: string) => {
-    setUserName(newName);
+    const trimmed = newName.trim();
+    if (!trimmed) return;
+    userNameRef.current = trimmed;
+    setUserName(trimmed);
     if (userId) {
-      socket?.emit('update-user-name', { userId, userName: newName });
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, name: trimmed } : u));
+      setCurrentSession(prev => {
+        if (!prev) return prev;
+        if (!prev.votes.some(v => v.userId === userId && v.userName !== trimmed)) return prev;
+        return {
+          ...prev,
+          votes: prev.votes.map(v => v.userId === userId ? { ...v, userName: trimmed } : v),
+        };
+      });
+      socket?.emit('update-user-name', { userId, userName: trimmed });
     }
   }, [socket, userId]);
 

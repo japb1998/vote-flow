@@ -1,4 +1,38 @@
-import { Session, Results } from '../types';
+import { Session, Results, VotingMethod } from '../types';
+
+const ROMAN_LABELS: Record<string, string> = {
+  up: 'Support',
+  down: 'Oppose',
+  sideways: 'Neutral',
+};
+
+const FIST_LABELS: Record<string, string> = {
+  '1': '1 - Blocking concern',
+  '2': '2 - Serious reservations',
+  '3': '3 - Can live with it',
+  '4': '4 - Good idea',
+  '5': '5 - Strong support',
+};
+
+function getOptionlessLabel(method: VotingMethod, key: string): string {
+  if (method === 'roman') return ROMAN_LABELS[key] || key;
+  if (method === 'fist-of-five') return FIST_LABELS[key] || key;
+  return key;
+}
+
+/**
+ * Escapes a value for RFC 4180 CSV output and neutralizes spreadsheet formula injection.
+ */
+export function escapeCsvCell(value: string | number): string {
+  let str = String(value);
+  if (/^[=+\-@\t\r]/.test(str)) {
+    str = `'${str}`;
+  }
+  if (/[",\n\r]/.test(str)) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+}
 
 export function exportToJson(session: Session, results: Results): string {
   const data = {
@@ -8,14 +42,21 @@ export function exportToJson(session: Session, results: Results): string {
       votingMethod: session.votingMethod,
       status: session.status,
       createdAt: session.createdAt,
+      closedAt: session.closedAt,
+      config: session.config,
     },
     options: session.options,
     results: {
+      method: results.method,
       totals: results.totals,
       percentages: results.percentages,
       winner: results.winner,
       averageScores: results.averageScores,
       roundInfo: results.roundInfo,
+      average: results.average,
+      median: results.median,
+      consensus: results.consensus,
+      passed: results.passed,
     },
     votes: session.votes.map(v => ({
       userId: v.userId,
@@ -30,66 +71,127 @@ export function exportToJson(session: Session, results: Results): string {
 
 export function exportToCsv(session: Session, results: Results): string {
   const lines: string[] = [];
-  
-  lines.push(`Session: ${session.title}`);
-  lines.push(`Session ID: ${session.id}`);
-  lines.push(`Voting Method: ${session.votingMethod}`);
-  lines.push(`Status: ${session.status}`);
+
+  lines.push(`Session,${escapeCsvCell(session.title)}`);
+  lines.push(`Session ID,${escapeCsvCell(session.id)}`);
+  lines.push(`Voting Method,${escapeCsvCell(session.votingMethod)}`);
+  lines.push(`Status,${escapeCsvCell(session.status)}`);
   lines.push('');
-  
+
   lines.push('Results');
   lines.push('Option,Votes,Percentage,Winner');
-  
-  session.options.forEach(option => {
-    const votes = results.totals[option.id] || 0;
-    const percentage = (results.percentages[option.id] || 0).toFixed(1);
-    const isWinner = results.winner === option.id ? 'Yes' : 'No';
-    lines.push(`"${option.name}",${votes},${percentage}%,${isWinner}`);
-  });
-  
+
+  if (session.options.length > 0) {
+    session.options.forEach(option => {
+      const votes = results.totals[option.id] || 0;
+      const percentage = `${(results.percentages[option.id] || 0).toFixed(1)}%`;
+      const isWinner = results.winner === option.id ? 'Yes' : 'No';
+      lines.push(`${escapeCsvCell(option.name)},${escapeCsvCell(votes)},${escapeCsvCell(percentage)},${escapeCsvCell(isWinner)}`);
+    });
+  } else {
+    Object.keys(results.totals).forEach(key => {
+      const label = getOptionlessLabel(session.votingMethod, key);
+      const votes = results.totals[key] || 0;
+      const percentage = `${(results.percentages[key] || 0).toFixed(1)}%`;
+      const isWinner = results.winner === key ? 'Yes' : 'No';
+      lines.push(`${escapeCsvCell(label)},${escapeCsvCell(votes)},${escapeCsvCell(percentage)},${escapeCsvCell(isWinner)}`);
+    });
+  }
+
+  const summaryRows: [string, string][] = [];
+  if (results.average !== undefined) {
+    summaryRows.push(['Average', results.average.toFixed(2)]);
+  }
+  if (results.median !== undefined) {
+    summaryRows.push(['Median', String(results.median)]);
+  }
+  if (results.consensus !== undefined) {
+    summaryRows.push(['Consensus', results.consensus ? 'Yes' : 'No']);
+  }
+  if (results.passed !== undefined) {
+    summaryRows.push(['Passed', results.passed ? 'Yes' : 'No']);
+  }
+
+  if (summaryRows.length > 0) {
+    lines.push('');
+    lines.push('Summary');
+    lines.push('Metric,Value');
+    summaryRows.forEach(([metric, value]) => {
+      lines.push(`${escapeCsvCell(metric)},${escapeCsvCell(value)}`);
+    });
+  }
+
   if (results.averageScores) {
     lines.push('');
     lines.push('Average Scores');
     lines.push('Option,Average Score');
     session.options.forEach(option => {
       const avg = (results.averageScores?.[option.id] || 0).toFixed(2);
-      lines.push(`"${option.name}",${avg}`);
+      lines.push(`${escapeCsvCell(option.name)},${escapeCsvCell(avg)}`);
     });
   }
-  
+
   lines.push('');
   lines.push('Votes');
   lines.push('User,Vote,Timestamp');
-  
+
   session.votes.forEach(vote => {
     let voteStr = '';
-    if (vote.selection.type === 'single') {
-      const sel = vote.selection as { type: 'single'; optionId: string };
-      const opt = session.options.find(o => o.id === sel.optionId);
-      voteStr = opt?.name || sel.optionId;
-    } else if (vote.selection.type === 'approval') {
-      const sel = vote.selection as { type: 'approval'; optionIds: string[] };
-      voteStr = sel.optionIds.map(id => {
-        const opt = session.options.find(o => o.id === id);
-        return opt?.name || id;
-      }).join('; ');
-    } else if (vote.selection.type === 'ranked') {
-      const sel = vote.selection as { type: 'ranked'; rankings: string[] };
-      voteStr = sel.rankings.map((id, i) => {
-        const opt = session.options.find(o => o.id === id);
-        return `${i + 1}. ${opt?.name || id}`;
-      }).join('; ');
-    } else if (vote.selection.type === 'score') {
-      const sel = vote.selection as { type: 'score'; scores: Record<string, number> };
-      voteStr = Object.entries(sel.scores).map(([id, score]) => {
-        const opt = session.options.find(o => o.id === id);
-        return `${opt?.name || id}: ${score}`;
-      }).join('; ');
+    const sel = vote.selection;
+    switch (sel.type) {
+      case 'single': {
+        const opt = session.options.find(o => o.id === sel.optionId);
+        voteStr = opt?.name || sel.optionId;
+        break;
+      }
+      case 'approval': {
+        voteStr = sel.optionIds.map(id => {
+          const opt = session.options.find(o => o.id === id);
+          return opt?.name || id;
+        }).join('; ');
+        break;
+      }
+      case 'ranked': {
+        voteStr = sel.rankings.map((id, i) => {
+          const opt = session.options.find(o => o.id === id);
+          return `${i + 1}. ${opt?.name || id}`;
+        }).join('; ');
+        break;
+      }
+      case 'score': {
+        voteStr = Object.entries(sel.scores).map(([id, score]) => {
+          const opt = session.options.find(o => o.id === id);
+          return `${opt?.name || id}: ${score}`;
+        }).join('; ');
+        break;
+      }
+      case 'poker': {
+        voteStr = sel.value;
+        break;
+      }
+      case 'dot': {
+        voteStr = Object.entries(sel.allocations)
+          .filter(([, dots]) => dots > 0)
+          .map(([id, dots]) => {
+            const opt = session.options.find(o => o.id === id);
+            return `${opt?.name || id}: ${dots}`;
+          })
+          .join('; ');
+        break;
+      }
+      case 'roman': {
+        voteStr = ROMAN_LABELS[sel.vote] || sel.vote;
+        break;
+      }
+      case 'fist-of-five': {
+        voteStr = `${sel.value}/5`;
+        break;
+      }
     }
-    
-    lines.push(`"${vote.userName}","${voteStr}",${new Date(vote.timestamp).toISOString()}`);
+
+    lines.push(`${escapeCsvCell(vote.userName)},${escapeCsvCell(voteStr)},${escapeCsvCell(new Date(vote.timestamp).toISOString())}`);
   });
-  
+
   return lines.join('\n');
 }
 

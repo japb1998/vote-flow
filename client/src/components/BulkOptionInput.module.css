@@ -156,6 +156,30 @@
   color: #e06c75;
 }
 
+/* Light-mode syntax highlighting overrides for accessible contrast */
+:global([data-theme="light"]) .editor :global(.token.string),
+:global([data-theme="light"]) .editor :global(.token.attr-value) {
+  color: #22863a;
+}
+
+:global([data-theme="light"]) .editor :global(.token.number) {
+  color: #9a6700;
+}
+
+:global([data-theme="light"]) .editor :global(.token.boolean),
+:global([data-theme="light"]) .editor :global(.token.null) {
+  color: #b35900;
+}
+
+:global([data-theme="light"]) .editor :global(.token.operator) {
+  color: #0b7285;
+}
+
+:global([data-theme="light"]) .editor :global(.token.important),
+:global([data-theme="light"]) .editor :global(.token.tag) {
+  color: #cf222e;
+}
+
 .dropOverlay {
   position: absolute;
   inset: 0;

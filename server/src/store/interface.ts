@@ -1,9 +1,10 @@
-import { Session, Vote, VotingMethod, Option } from '../types';
+import { Session, Vote } from '../types';
 
 export interface UserInfo {
   id: string;
   name: string;
   socketId: string | null;
+  authToken?: string;
 }
 
 export interface SessionStore {

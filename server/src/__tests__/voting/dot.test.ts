@@ -68,6 +68,26 @@ describe('calculateDot', () => {
     const votes = [makeVote({ unknown: 3 }, 'u1')];
     const result = calculateDot(votes, OPTIONS);
     expect(result.totals).toEqual({ opt1: 0, opt2: 0, opt3: 0 });
+    expect(result.winner).toBeUndefined();
+  });
+
+  it('ignores prototype property keys like toString and constructor', () => {
+    const votes = [
+      makeVote({ toString: 3, constructor: 2, valueOf: 1 } as Record<string, number>, 'u1'),
+    ];
+    const result = calculateDot(votes, OPTIONS);
+    expect(result.totals).toEqual({ opt1: 0, opt2: 0, opt3: 0 });
+    expect(result.percentages).toEqual({ opt1: 0, opt2: 0, opt3: 0 });
+    expect(result.winner).toBeUndefined();
+  });
+
+  it('ignores negative and non-finite dot allocations', () => {
+    const votes = [
+      makeVote({ opt1: -5, opt2: Number.NaN, opt3: Number.POSITIVE_INFINITY }, 'u1'),
+    ];
+    const result = calculateDot(votes, OPTIONS);
+    expect(result.totals).toEqual({ opt1: 0, opt2: 0, opt3: 0 });
+    expect(result.winner).toBeUndefined();
   });
 
   it('ignores votes with wrong selection type', () => {
@@ -77,9 +97,10 @@ describe('calculateDot', () => {
     };
     const result = calculateDot([vote], OPTIONS);
     expect(result.totals).toEqual({ opt1: 0, opt2: 0, opt3: 0 });
+    expect(result.winner).toBeUndefined();
   });
 
-  it('handles many voters with spread allocations', () => {
+  it('returns undefined winner on tied allocations across options', () => {
     const votes = [
       makeVote({ opt1: 1, opt2: 1, opt3: 1 }, 'u1'),
       makeVote({ opt1: 1, opt2: 1, opt3: 1 }, 'u2'),
@@ -87,5 +108,6 @@ describe('calculateDot', () => {
     ];
     const result = calculateDot(votes, OPTIONS);
     expect(result.totals).toEqual({ opt1: 3, opt2: 3, opt3: 3 });
+    expect(result.winner).toBeUndefined();
   });
 });

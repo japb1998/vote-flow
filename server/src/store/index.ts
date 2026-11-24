@@ -1,5 +1,4 @@
 import { SessionStore } from './interface';
-import { SqliteSessionStore } from './sqlite';
 import { MemorySessionStore } from './memory';
 
 export type StoreType = 'sqlite' | 'memory';
@@ -12,9 +11,12 @@ export function createStore(type?: StoreType): SessionStore {
       console.log('Using in-memory session store');
       return new MemorySessionStore();
     case 'sqlite':
-    default:
-      console.log(`Using SQLite session store`);
+    default: {
+      console.log('Using SQLite session store');
+      // Lazy-load sqlite store so SESSION_STORE=memory works without sqlite3 native bindings
+      const { SqliteSessionStore } = require('./sqlite') as typeof import('./sqlite');
       return new SqliteSessionStore();
+    }
   }
 }
 
